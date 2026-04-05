@@ -28,6 +28,11 @@ output "nat_gateway_public_ip" {
   value       = module.vpc.nat_gateway_public_ip
 }
 
+output "availability_zones" {
+  description = "The three availability zones used for subnets."
+  value       = local.selected_availability_zones
+}
+
 output "public_subnet_ids" {
   description = "Map of public subnet keys to subnet IDs."
   value       = module.vpc.public_subnet_ids

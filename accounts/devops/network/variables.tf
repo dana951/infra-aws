@@ -30,23 +30,24 @@ variable "enable_dns_hostnames" {
   default     = true
 }
 
-variable "public_subnets" {
-  type = map(object({
-    availability_zone = string
-    cidr_block        = string
-  }))
-  description = <<-EOT
-    Public subnets for internet-facing load balancer.
-    Keys must include the subnet used for the single NAT gateway (see nat_gateway_public_subnet_key).
-  EOT
+variable "public_subnet_cidrs" {
+  type        = list(string)
+  description = "Exactly three public subnet CIDR blocks"
+
+  validation {
+    condition     = length(var.public_subnet_cidrs) == 3
+    error_message = "Exactly three public subnet CIDR blocks are required."
+  }
 }
 
-variable "private_subnets" {
-  type = map(object({
-    availability_zone = string
-    cidr_block        = string
-  }))
-  description = "Private subnets for EKS nodes."
+variable "private_subnet_cidrs" {
+  type        = list(string)
+  description = "Exactly three private subnet CIDR blocks."
+
+  validation {
+    condition     = length(var.private_subnet_cidrs) == 3
+    error_message = "Exactly three private subnet CIDR blocks are required."
+  }
 }
 
 variable "nat_gateway_public_subnet_key" {
