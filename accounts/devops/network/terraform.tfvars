@@ -4,7 +4,7 @@ aws_region = "us-east-1"
 
 profile = "devops"
 
-name_prefix = "devops-network"
+name_prefix = "devops"
 
 vpc_cidr_block = "10.0.0.0/16"
 
