@@ -1,5 +1,3 @@
-# Local environment values (gitignored). Keep in sync with terraform.tfvars.example for structure.
-
 aws_region = "us-east-1"
 
 profile = "devops"
