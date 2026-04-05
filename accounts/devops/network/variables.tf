@@ -3,6 +3,11 @@ variable "aws_region" {
   description = "AWS region."
 }
 
+variable "profile" {
+  type        = string
+  description = "AWS CLI profile."
+}
+
 variable "name_prefix" {
   type        = string
   description = "Prefix for resource Name tags."
