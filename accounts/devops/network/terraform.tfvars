@@ -18,7 +18,7 @@ private_subnet_cidrs = [
   "10.0.30.0/24",
 ]
 
-nat_gateway_public_subnet_key = "a"
+create_nat_gateway = true
 
 cluster_name = "devops-eks"
 

@@ -32,27 +32,28 @@ variable "enable_dns_hostnames" {
 
 variable "public_subnet_cidrs" {
   type        = list(string)
-  description = "Exactly three public subnet CIDR blocks"
+  description = "Public subnet CIDR blocks."
 
   validation {
-    condition     = length(var.public_subnet_cidrs) == 3
-    error_message = "Exactly three public subnet CIDR blocks are required."
+    condition     = length(var.public_subnet_cidrs) > 0
+    error_message = "At least one public subnet CIDR block is required."
   }
 }
 
 variable "private_subnet_cidrs" {
   type        = list(string)
-  description = "Exactly three private subnet CIDR blocks."
+  description = "Private subnet CIDR blocks."
 
   validation {
-    condition     = length(var.private_subnet_cidrs) == 3
-    error_message = "Exactly three private subnet CIDR blocks are required."
+    condition     = length(var.private_subnet_cidrs) > 0
+    error_message = "At least one private subnet CIDR block is required."
   }
 }
 
-variable "nat_gateway_public_subnet_key" {
-  type        = string
-  description = "Public subnet key where the single NAT gateway is placed (cost tradeoff: one NAT, typically first AZ)."
+variable "create_nat_gateway" {
+  type        = bool
+  description = "Whether to create a single NAT gateway."
+  default     = true
 }
 
 variable "cluster_name" {

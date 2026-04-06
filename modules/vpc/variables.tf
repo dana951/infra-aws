@@ -58,14 +58,10 @@ variable "private_subnets" {
   }
 }
 
-variable "nat_gateway_public_subnet_key" {
-  type        = string
-  description = "Key of the public subnet (in public_subnets) where the single NAT gateway and its EIP are placed."
-
-  validation {
-    condition     = contains(keys(var.public_subnets), var.nat_gateway_public_subnet_key)
-    error_message = "nat_gateway_public_subnet_key must be one of the keys defined in public_subnets."
-  }
+variable "create_nat_gateway" {
+  type        = bool
+  description = "Whether to create a single NAT gateway."
+  default     = true
 }
 
 variable "cluster_name" {
