@@ -28,16 +28,6 @@ output "nat_gateway_public_ip" {
   value       = var.create_nat_gateway ? aws_eip.eip[0].public_ip : null
 }
 
-output "public_subnet_ids" {
-  description = "Map of public subnet keys to subnet IDs."
-  value       = { for k, s in aws_subnet.public_subnet : k => s.id }
-}
-
-output "private_subnet_ids" {
-  description = "Map of private subnet keys to subnet IDs."
-  value       = { for k, s in aws_subnet.private_subnet : k => s.id }
-}
-
 output "public_subnet_ids_list" {
   description = "List of public subnet IDs (order not guaranteed; prefer keyed maps for AZ alignment)."
   value       = values(aws_subnet.public_subnet)[*].id
@@ -46,16 +36,6 @@ output "public_subnet_ids_list" {
 output "private_subnet_ids_list" {
   description = "List of private subnet IDs (order not guaranteed)."
   value       = values(aws_subnet.private_subnet)[*].id
-}
-
-output "public_subnet_ids_by_az" {
-  description = "Map of availability zone to public subnet ID (fails if multiple subnets share the same AZ)."
-  value       = { for k, s in aws_subnet.public_subnet : s.availability_zone => s.id }
-}
-
-output "private_subnet_ids_by_az" {
-  description = "Map of availability zone to private subnet ID (fails if multiple subnets share the same AZ)."
-  value       = { for k, s in aws_subnet.private_subnet : s.availability_zone => s.id }
 }
 
 output "public_route_table_id" {

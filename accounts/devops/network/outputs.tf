@@ -33,26 +33,6 @@ output "availability_zones" {
   value       = local.selected_availability_zones
 }
 
-output "public_subnet_ids" {
-  description = "Map of public subnet keys to subnet IDs."
-  value       = module.vpc.public_subnet_ids
-}
-
-output "private_subnet_ids" {
-  description = "Map of private subnet keys to subnet IDs."
-  value       = module.vpc.private_subnet_ids
-}
-
-output "public_subnet_ids_by_az" {
-  description = "Availability zone to public subnet ID."
-  value       = module.vpc.public_subnet_ids_by_az
-}
-
-output "private_subnet_ids_by_az" {
-  description = "Availability zone to private subnet ID."
-  value       = module.vpc.private_subnet_ids_by_az
-}
-
 output "public_subnets" {
   description = "Map of public subnet identifier to details (name, id, az, cidr)."
   value       = module.vpc.public_subnets
