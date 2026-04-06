@@ -20,22 +20,12 @@ output "internet_gateway_id" {
 
 output "nat_gateway_id" {
   description = "ID of the NAT gateway (single NAT deployment)."
-  value       = aws_nat_gateway.nat_gateway.id
+  value       = var.create_nat_gateway ? aws_nat_gateway.nat_gateway[0].id : null
 }
 
 output "nat_gateway_public_ip" {
   description = "Public IP address of the NAT gateway (from the associated Elastic IP)."
-  value       = aws_eip.eip.public_ip
-}
-
-output "public_subnet_ids" {
-  description = "Map of public subnet keys to subnet IDs."
-  value       = { for k, s in aws_subnet.public_subnet : k => s.id }
-}
-
-output "private_subnet_ids" {
-  description = "Map of private subnet keys to subnet IDs."
-  value       = { for k, s in aws_subnet.private_subnet : k => s.id }
+  value       = var.create_nat_gateway ? aws_eip.eip[0].public_ip : null
 }
 
 output "public_subnet_ids_list" {
@@ -46,16 +36,6 @@ output "public_subnet_ids_list" {
 output "private_subnet_ids_list" {
   description = "List of private subnet IDs (order not guaranteed)."
   value       = values(aws_subnet.private_subnet)[*].id
-}
-
-output "public_subnet_ids_by_az" {
-  description = "Map of availability zone to public subnet ID (fails if multiple subnets share the same AZ)."
-  value       = { for k, s in aws_subnet.public_subnet : s.availability_zone => s.id }
-}
-
-output "private_subnet_ids_by_az" {
-  description = "Map of availability zone to private subnet ID (fails if multiple subnets share the same AZ)."
-  value       = { for k, s in aws_subnet.private_subnet : s.availability_zone => s.id }
 }
 
 output "public_route_table_id" {
@@ -70,5 +50,29 @@ output "private_route_table_id" {
 
 output "nat_gateway_subnet_key" {
   description = "Public subnet key where the NAT gateway is deployed."
-  value       = var.nat_gateway_public_subnet_key
+  value       = var.create_nat_gateway ? local.first_public_subnet_key : null
+}
+
+output "public_subnets" {
+  description = "Map of public subnet identifier to details."
+  value = {
+    for key, subnet in aws_subnet.public_subnet : key => {
+      name = subnet.tags["Name"]
+      id   = subnet.id
+      az   = subnet.availability_zone
+      cidr = subnet.cidr_block
+    }
+  }
+}
+
+output "private_subnets" {
+  description = "Map of private subnet identifier to details."
+  value = {
+    for key, subnet in aws_subnet.private_subnet : key => {
+      name = subnet.tags["Name"]
+      id   = subnet.id
+      az   = subnet.availability_zone
+      cidr = subnet.cidr_block
+    }
+  }
 }

@@ -1,20 +1,17 @@
 locals {
-  # Stable keys for subnets and for nat_gateway_public_subnet_key (e.g. "a" = first AZ returned).
-  subnet_keys = ["a", "b", "c"]
-
-  selected_availability_zones = slice(data.aws_availability_zones.available.names, 0, 3)
+  selected_availability_zones = data.aws_availability_zones.available.names
 
   public_subnets = {
-    for idx in range(3) : local.subnet_keys[idx] => {
-      availability_zone = local.selected_availability_zones[idx]
-      cidr_block        = var.public_subnet_cidrs[idx]
+    for idx, cidr in var.public_subnet_cidrs : tostring(idx + 1) => {
+      availability_zone = element(local.selected_availability_zones, idx)
+      cidr_block        = cidr
     }
   }
 
   private_subnets = {
-    for idx in range(3) : local.subnet_keys[idx] => {
-      availability_zone = local.selected_availability_zones[idx]
-      cidr_block        = var.private_subnet_cidrs[idx]
+    for idx, cidr in var.private_subnet_cidrs : tostring(idx + 1) => {
+      availability_zone = element(local.selected_availability_zones, idx)
+      cidr_block        = cidr
     }
   }
 }
@@ -33,7 +30,7 @@ module "vpc" {
   public_subnets  = local.public_subnets
   private_subnets = local.private_subnets
 
-  nat_gateway_public_subnet_key = var.nat_gateway_public_subnet_key
+  create_nat_gateway = var.create_nat_gateway
 
   map_public_ip_on_launch = var.map_public_ip_on_launch
 

@@ -29,28 +29,18 @@ output "nat_gateway_public_ip" {
 }
 
 output "availability_zones" {
-  description = "The three availability zones used for subnets."
+  description = "Availability zones available for this region."
   value       = local.selected_availability_zones
 }
 
-output "public_subnet_ids" {
-  description = "Map of public subnet keys to subnet IDs."
-  value       = module.vpc.public_subnet_ids
+output "public_subnets" {
+  description = "Map of public subnet identifier to details (name, id, az, cidr)."
+  value       = module.vpc.public_subnets
 }
 
-output "private_subnet_ids" {
-  description = "Map of private subnet keys to subnet IDs."
-  value       = module.vpc.private_subnet_ids
-}
-
-output "public_subnet_ids_by_az" {
-  description = "Availability zone to public subnet ID."
-  value       = module.vpc.public_subnet_ids_by_az
-}
-
-output "private_subnet_ids_by_az" {
-  description = "Availability zone to private subnet ID."
-  value       = module.vpc.private_subnet_ids_by_az
+output "private_subnets" {
+  description = "Map of private subnet identifier to details (name, id, az, cidr)."
+  value       = module.vpc.private_subnets
 }
 
 output "public_route_table_id" {
@@ -64,6 +54,6 @@ output "private_route_table_id" {
 }
 
 output "nat_gateway_subnet_key" {
-  description = "Public subnet key where the NAT gateway is deployed."
+  description = "Public subnet key where the NAT gateway is deployed (null when NAT is disabled)."
   value       = module.vpc.nat_gateway_subnet_key
 }

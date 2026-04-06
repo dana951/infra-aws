@@ -14,6 +14,8 @@ locals {
     },
     var.private_subnet_tags,
   )
+
+  first_public_subnet_key = sort(keys(var.public_subnets))[0]
 }
 
 resource "aws_vpc" "vpc" {
@@ -76,6 +78,7 @@ resource "aws_subnet" "private_subnet" {
 }
 
 resource "aws_eip" "eip" {
+  count  = var.create_nat_gateway ? 1 : 0
   domain = "vpc"
 
   tags = merge(
@@ -89,8 +92,9 @@ resource "aws_eip" "eip" {
 }
 
 resource "aws_nat_gateway" "nat_gateway" {
-  allocation_id = aws_eip.eip.id
-  subnet_id     = aws_subnet.public_subnet[var.nat_gateway_public_subnet_key].id
+  count         = var.create_nat_gateway ? 1 : 0
+  allocation_id = aws_eip.eip[count.index].id
+  subnet_id     = aws_subnet.public_subnet[local.first_public_subnet_key].id
 
   tags = merge(
     var.common_tags,
@@ -130,9 +134,12 @@ resource "aws_route_table_association" "public_subnet_rt_association" {
 resource "aws_route_table" "private_rt" {
   vpc_id = aws_vpc.vpc.id
 
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat_gateway.id
+  dynamic "route" {
+    for_each = var.create_nat_gateway ? [1] : []
+    content {
+      cidr_block     = "0.0.0.0/0"
+      nat_gateway_id = aws_nat_gateway.nat_gateway[0].id
+    }
   }
 
   tags = merge(
