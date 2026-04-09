@@ -51,3 +51,33 @@ variable "common_tags" {
   description = "Common tags merged into all resources."
   default     = {}
 }
+
+variable "public_node_groups" {
+  type = map(object({
+    instance_types  = optional(list(string), ["t3.medium"])
+    min_size        = number
+    max_size        = number
+    desired_size    = number
+    disk_size       = optional(number, 20)
+    max_unavailable = optional(number, 1)
+    labels          = optional(map(string), {})
+    tags            = optional(map(string), {})
+  }))
+  description = "Optional public node groups. Empty map means no public node groups. key is the node group name."
+  default     = {}
+}
+
+variable "private_node_groups" {
+  type = map(object({
+    instance_types  = optional(list(string), ["t3.medium"])
+    min_size        = number
+    max_size        = number
+    desired_size    = number
+    disk_size       = optional(number, 20)
+    max_unavailable = optional(number, 1)
+    labels          = optional(map(string), {})
+    tags            = optional(map(string), {})
+  }))
+  description = "Optional private node groups. Empty map means no private node groups. key is the node group name."
+  default     = {}
+}

@@ -11,6 +11,27 @@ cluster_endpoint_private_access = true
 cluster_endpoint_public_access  = true
 cluster_endpoint_public_access_cidrs = []
 
+private_node_groups = {
+  tools = {
+    min_size     = 1
+    max_size     = 1
+    desired_size = 1
+    tags = {
+      NodeGroup = "tools"
+    }
+  }
+  jenkins-agents = {
+    min_size     = 1
+    max_size     = 1
+    desired_size = 1
+    tags = {
+      NodeGroup = "jenkins-agents"
+    }
+  }
+}
+
+public_node_groups = {}
+
 common_tags = {
   Project     = "devops-portfolio"
   Environment = "devops"

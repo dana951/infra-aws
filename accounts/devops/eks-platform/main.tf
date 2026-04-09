@@ -14,26 +14,8 @@ module "eks" {
   cluster_endpoint_public_access        = var.cluster_endpoint_public_access
   cluster_endpoint_public_access_cidrs  = var.cluster_endpoint_public_access_cidrs
 
-  private_node_groups = {
-    tools = {
-      min_size     = 1
-      max_size     = 1
-      desired_size = 1
-      tags = {
-        NodeGroup = "tools"
-      }
-    }
-    jenkins-agents = {
-      min_size     = 1
-      max_size     = 1
-      desired_size = 1
-      tags = {
-        NodeGroup = "jenkins-agents"
-      }
-    }
-  }
-
-  public_node_groups = {}
+  private_node_groups = var.private_node_groups
+  public_node_groups  = var.public_node_groups
 
   common_tags = var.common_tags
 }
