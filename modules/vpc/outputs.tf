@@ -38,6 +38,16 @@ output "private_subnet_ids_list" {
   value       = values(aws_subnet.private_subnet)[*].id
 }
 
+output "public_subnet_ids" {
+  description = "Public subnet IDs."
+  value       = values(aws_subnet.public_subnet)[*].id
+}
+
+output "private_subnet_ids" {
+  description = "Private subnet IDs."
+  value       = values(aws_subnet.private_subnet)[*].id
+}
+
 output "public_route_table_id" {
   description = "ID of the public route table (Internet Gateway default route)."
   value       = aws_route_table.public_rt.id
