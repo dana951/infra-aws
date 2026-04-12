@@ -43,9 +43,9 @@ output "cluster_iam_role_arn" {
   value       = module.eks.cluster_iam_role_arn
 }
 
-output "cluster_primary_security_group_id" {
-  description = "EKS cluster primary security group ID."
-  value       = module.eks.cluster_primary_security_group_id
+output "cluster_security_group_id" {
+  description = "Security group ID created by EKS."
+  value       = module.eks.cluster_security_group_id
 }
 
 output "private_node_groups" {

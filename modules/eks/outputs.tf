@@ -43,11 +43,6 @@ output "node_group_role_arn" {
   value       = aws_iam_role.eks_nodegroup_role.arn
 }
 
-output "cluster_security_group_id" {
-  description = "EKS cluster primary security group ID."
-  value       = aws_eks_cluster.eks_cluster.vpc_config[0].cluster_security_group_id
-}
-
 output "cluster_iam_role_name" {
   description = "IAM role name of the EKS cluster."
   value       = aws_iam_role.eks_master_role.name
@@ -58,8 +53,8 @@ output "cluster_iam_role_arn" {
   value       = aws_iam_role.eks_master_role.arn
 }
 
-output "cluster_primary_security_group_id" {
-  description = "Primary security group created by EKS."
+output "cluster_security_group_id" {
+  description = "Security group ID created by EKS."
   value       = aws_eks_cluster.eks_cluster.vpc_config[0].cluster_security_group_id
 }
 
