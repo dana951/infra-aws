@@ -64,11 +64,6 @@ variable "create_nat_gateway" {
   default     = true
 }
 
-variable "cluster_name" {
-  type        = string
-  description = "EKS cluster name."
-}
-
 variable "common_tags" {
   type        = map(string)
   description = "Common tags applied to all resources in this module."

@@ -43,6 +43,16 @@ output "private_subnets" {
   value       = module.vpc.private_subnets
 }
 
+output "public_subnet_ids" {
+  description = "Public subnet IDs."
+  value       = module.vpc.public_subnet_ids
+}
+
+output "private_subnet_ids" {
+  description = "Private subnet IDs."
+  value       = module.vpc.private_subnet_ids
+}
+
 output "public_route_table_id" {
   description = "Route table ID for public subnets (default route via Internet Gateway)."
   value       = module.vpc.public_route_table_id

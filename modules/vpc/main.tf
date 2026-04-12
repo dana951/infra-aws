@@ -1,20 +1,4 @@
 locals {
-  public_subnet_tags = merge(
-    {
-      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
-      "kubernetes.io/role/elb"                    = "1"
-    },
-    var.public_subnet_tags,
-  )
-
-  private_subnet_tags = merge(
-    {
-      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
-      "kubernetes.io/role/internal-elb"           = "1"
-    },
-    var.private_subnet_tags,
-  )
-
   first_public_subnet_key = sort(keys(var.public_subnets))[0]
 }
 
@@ -54,7 +38,7 @@ resource "aws_subnet" "public_subnet" {
 
   tags = merge(
     var.common_tags,
-    local.public_subnet_tags,
+    var.public_subnet_tags,
     {
       Name = "${var.name_prefix}-public_subnet-${each.key}"
     },
@@ -70,7 +54,7 @@ resource "aws_subnet" "private_subnet" {
 
   tags = merge(
     var.common_tags,
-    local.private_subnet_tags,
+    var.private_subnet_tags,
     {
       Name = "${var.name_prefix}-private_subnet-${each.key}"
     },

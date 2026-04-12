@@ -20,8 +20,6 @@ private_subnet_cidrs = [
 
 create_nat_gateway = true
 
-cluster_name = "devops-eks"
-
 common_tags = {
   Project     = "devops-portfolio"
   Environment = "devops"
