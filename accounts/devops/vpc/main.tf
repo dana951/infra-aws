@@ -19,10 +19,9 @@ locals {
 module "vpc" {
   source = "../../../modules/vpc"
 
-  name_prefix     = var.name_prefix
-  vpc_cidr_block  = var.vpc_cidr_block
-  cluster_name    = var.cluster_name
-  common_tags     = var.common_tags
+  name_prefix    = var.name_prefix
+  vpc_cidr_block = var.vpc_cidr_block
+  common_tags    = var.common_tags
 
   enable_dns_support   = var.enable_dns_support
   enable_dns_hostnames = var.enable_dns_hostnames

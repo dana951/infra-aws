@@ -56,11 +56,6 @@ variable "create_nat_gateway" {
   default     = true
 }
 
-variable "cluster_name" {
-  type        = string
-  description = "EKS cluster name for kubernetes.io/cluster/<name> subnet tags (must match the future EKS cluster resource name)."
-}
-
 variable "common_tags" {
   type        = map(string)
   description = "Common tags merged into all resources created by the VPC module."

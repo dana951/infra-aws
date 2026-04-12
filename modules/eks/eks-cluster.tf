@@ -26,5 +26,9 @@ resource "aws_eks_cluster" "eks_cluster" {
     aws_cloudwatch_log_group.eks,
     aws_iam_role_policy_attachment.eks_AmazonEKSClusterPolicy,
     aws_iam_role_policy_attachment.eks_AmazonEKSVPCResourceController,
+    aws_ec2_tag.public_subnet_kubernetes_cluster,
+    aws_ec2_tag.public_subnet_elb,
+    aws_ec2_tag.private_subnet_kubernetes_cluster,
+    aws_ec2_tag.private_subnet_internal_elb,
   ]
 }
