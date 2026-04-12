@@ -12,12 +12,12 @@ cluster_endpoint_public_access  = true
 cluster_endpoint_public_access_cidrs = []
 
 private_node_groups = {
-  tools = {
+  jenkins = {
     min_size     = 1
     max_size     = 1
     desired_size = 1
     tags = {
-      NodeGroup = "tools"
+      NodeGroup = "jenkins"
     }
   }
   jenkins-agents = {
