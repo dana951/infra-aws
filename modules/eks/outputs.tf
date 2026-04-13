@@ -33,6 +33,11 @@ output "cluster_oidc_issuer_url" {
   value       = aws_eks_cluster.eks_cluster.identity[0].oidc[0].issuer
 }
 
+output "oidc_issuer_hostpath" {
+  description = "OIDC issuer hostpath without https://."
+  value       = replace(aws_eks_cluster.eks_cluster.identity[0].oidc[0].issuer, "https://", "")
+}
+
 output "oidc_provider_arn" {
   description = "IAM OIDC provider ARN."
   value       = aws_iam_openid_connect_provider.oidc_provider.arn
