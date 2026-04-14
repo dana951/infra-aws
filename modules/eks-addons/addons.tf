@@ -5,12 +5,20 @@ locals {
   }
 }
 
+data "aws_eks_addon_version" "addon_version" {
+  for_each = var.addons
+
+  addon_name         = each.key
+  kubernetes_version = var.cluster_version
+  most_recent        = true
+}
+
 resource "aws_eks_addon" "addons" {
   for_each = local.enabled_addons
 
   cluster_name         = var.cluster_name
   addon_name           = each.key
-  addon_version        = try(each.value.addon_version, null)
+  addon_version        = try(each.value.addon_version, data.aws_eks_addon_version.addon_version[each.key].version)
   configuration_values = try(each.value.configuration_values, null)
   preserve             = try(each.value.preserve, false)
 

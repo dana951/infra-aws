@@ -8,6 +8,11 @@ variable "cluster_name" {
   description = "EKS cluster name where addons are installed."
 }
 
+variable "cluster_version" {
+  type        = string
+  description = "EKS cluster Kubernetes version used to resolve compatible addon versions."
+}
+
 variable "oidc_provider_arn" {
   type        = string
   description = "OIDC provider ARN associated with the EKS cluster."
@@ -36,6 +41,8 @@ variable "addons" {
     Map of EKS addons keyed by addon name (for example aws-efs-csi-driver, coredns, vpc-cni).
     Each addon can override version and related attributes. Required irsa block lets this
     module create IAM role + policy attachments and auto-wire service_account_role_arn.
+    If addon_version is not provided for a specific addon, the most recent compatible
+    addon version for the given cluster_version is selected automatically.
     Empty map means no addons.
   EOT
   default = {}
