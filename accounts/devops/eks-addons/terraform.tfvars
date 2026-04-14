@@ -19,3 +19,33 @@ addons = {
     }
   }
 }
+
+helm_charts = {
+  "aws-load-balancer-controller" = {
+    enabled       = true
+    namespace     = "kube-system"
+    repository    = "https://aws.github.io/eks-charts"
+    chart         = "aws-load-balancer-controller"
+    chart_version = "1.14.0"
+
+    set = [
+      {
+        name  = "clusterName"
+        value = "cicd-eks"
+      },
+      {
+        name  = "serviceAccount.create"
+        value = "true"
+      },
+      {
+        name  = "serviceAccount.name"
+        value = "aws-load-balancer-controller"
+      }
+    ]
+
+    irsa = {
+      k8s_service_account = "aws-load-balancer-controller"
+      policy_document_url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.14.1/docs/install/iam_policy.json"
+    }
+  }
+}

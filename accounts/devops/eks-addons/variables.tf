@@ -23,3 +23,9 @@ variable "addons" {
   type        = any
   description = "Addons map keyed by addon name, each value contains addon attributes."
 }
+
+variable "helm_charts" {
+  type        = any
+  description = "Helm charts map keyed by release name, each value contains chart attributes."
+  default     = {}
+}

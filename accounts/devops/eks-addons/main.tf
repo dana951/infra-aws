@@ -8,5 +8,6 @@ module "eks_addons" {
   oidc_issuer_hostpath = data.terraform_remote_state.eks_cluster.outputs.oidc_issuer_hostpath
   common_tags         = var.common_tags
 
-  addons = var.addons
+  addons      = var.addons
+  helm_charts = var.helm_charts
 }
