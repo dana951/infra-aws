@@ -18,16 +18,27 @@ variable "oidc_issuer_hostpath" {
   description = "OIDC issuer hostpath (without https://)"
 }
 
-variable "enable_efs_csi_driver" {
-  type        = bool
-  description = "Whether to install the aws-efs-csi-driver EKS addon and create its IRSA role."
-  default     = true
-}
-
-variable "efs_csi_addon_version" {
-  type        = string
-  description = "Optional aws-efs-csi-driver addon version. Null lets EKS install the default compatible version."
-  default     = null
+variable "addons" {
+  type = map(object({
+    enabled                     = optional(bool, true)
+    addon_version               = optional(string)
+    configuration_values        = optional(string)
+    resolve_conflicts_on_create = optional(string, "OVERWRITE")
+    resolve_conflicts_on_update = optional(string, "OVERWRITE")
+    preserve                    = optional(bool, false)
+    tags                        = optional(map(string), {})
+    irsa = object({
+      k8s_service_account = string
+      policy_arn          = string
+    })
+  }))
+  description = <<-EOT
+    Map of EKS addons keyed by addon name (for example aws-efs-csi-driver, coredns, vpc-cni).
+    Each addon can override version and related attributes. Required irsa block lets this
+    module create IAM role + policy attachments and auto-wire service_account_role_arn.
+    Empty map means no addons.
+  EOT
+  default = {}
 }
 
 variable "common_tags" {
