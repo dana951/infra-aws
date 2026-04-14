@@ -1,0 +1,51 @@
+aws_region  = "us-east-1"
+profile     = "devops"
+name_prefix = "devops"
+
+common_tags = {
+  Project     = "devops-portfolio"
+  Environment = "devops"
+  ManagedBy   = "terraform"
+  Component   = "eks-addons"
+}
+
+addons = {
+  "aws-efs-csi-driver" = {
+    enabled       = true
+    addon_version = "v2.1.9-eksbuild.1"
+    irsa = {
+      k8s_service_account = "efs-csi-controller-sa"
+      policy_arn          = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
+    }
+  }
+}
+
+helm_charts = {
+  "aws-load-balancer-controller" = {
+    enabled       = true
+    namespace     = "kube-system"
+    repository    = "https://aws.github.io/eks-charts"
+    chart         = "aws-load-balancer-controller"
+    chart_version = "1.14.0"
+
+    set = [
+      {
+        name  = "clusterName"
+        value = "cicd-eks"
+      },
+      {
+        name  = "serviceAccount.create"
+        value = "true"
+      },
+      {
+        name  = "serviceAccount.name"
+        value = "aws-load-balancer-controller"
+      }
+    ]
+
+    irsa = {
+      k8s_service_account = "aws-load-balancer-controller"
+      policy_document_url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.14.1/docs/install/iam_policy.json"
+    }
+  }
+}

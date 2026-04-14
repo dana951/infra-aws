@@ -33,6 +33,16 @@ output "cluster_oidc_issuer_url" {
   value       = module.eks.cluster_oidc_issuer_url
 }
 
+output "oidc_issuer_hostpath" {
+  description = "Cluster OIDC issuer hostpath without https://."
+  value       = module.eks.oidc_issuer_hostpath
+}
+
+output "oidc_provider_arn" {
+  description = "Cluster OIDC provider ARN."
+  value       = module.eks.oidc_provider_arn
+}
+
 output "cluster_iam_role_name" {
   description = "EKS cluster IAM role name."
   value       = module.eks.cluster_iam_role_name
