@@ -55,7 +55,6 @@ variable "helm_charts" {
     IMPORTANT: If irsa is configured, the service account name used by the Helm chart
     must be exactly the same as irsa.k8s_service_account.
   EOT
-  default = {}
 }
 
 variable "common_tags" {

@@ -60,7 +60,6 @@ variable "addons" {
     addon version for the given cluster_version is selected automatically.
     Empty map means no addons.
   EOT
-  default = {}
 }
 
 variable "common_tags" {
