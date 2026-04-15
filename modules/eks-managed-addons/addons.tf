@@ -16,12 +16,11 @@ data "aws_eks_addon_version" "addon_version" {
 resource "aws_eks_addon" "addons" {
   for_each = local.enabled_addons
 
-  cluster_name         = var.cluster_name
-  addon_name           = each.key
-  addon_version        = try(each.value.addon_version, data.aws_eks_addon_version.addon_version[each.key].version)
-  configuration_values = try(each.value.configuration_values, null)
-  preserve             = try(each.value.preserve, false)
-
+  cluster_name           = var.cluster_name
+  addon_name             = each.key
+  addon_version          = try(each.value.addon_version, data.aws_eks_addon_version.addon_version[each.key].version)
+  configuration_values   = try(each.value.configuration_values, null)
+  preserve               = try(each.value.preserve, false)
   service_account_role_arn = aws_iam_role.addon_iam_role[each.key].arn
 
   resolve_conflicts_on_create = try(each.value.resolve_conflicts_on_create, "OVERWRITE")

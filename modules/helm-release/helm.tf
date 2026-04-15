@@ -18,12 +18,12 @@ resource "helm_release" "release" {
       },
     ] : [],
   )
-  set_sensitive    = try(each.value.set_sensitive, [])
-  wait             = try(each.value.wait, true)
-  timeout          = try(each.value.timeout, 600)
-  atomic           = try(each.value.atomic, true)
-  cleanup_on_fail  = try(each.value.cleanup_on_fail, false)
-  dependency_update = try(each.value.dependency_update, false)
+  set_sensitive       = try(each.value.set_sensitive, [])
+  wait                = try(each.value.wait, true)
+  timeout             = try(each.value.timeout, 600)
+  atomic              = try(each.value.atomic, true)
+  cleanup_on_fail     = try(each.value.cleanup_on_fail, false)
+  dependency_update   = try(each.value.dependency_update, false)
 
   depends_on = [
     aws_iam_role_policy_attachment.helm_chart_irsa_policy_attach,
