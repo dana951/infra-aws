@@ -22,6 +22,7 @@ variable "common_tags" {
 variable "addons" {
   type        = any
   description = "Addons map keyed by addon name, each value contains addon attributes."
+  default     = {}
 }
 
 variable "helm_charts" {
