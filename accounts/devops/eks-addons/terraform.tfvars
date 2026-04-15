@@ -12,10 +12,19 @@ common_tags = {
 addons = {
   "aws-efs-csi-driver" = {
     enabled       = true
-    addon_version = "v2.1.9-eksbuild.1"
+    addon_version = null
     irsa = {
       k8s_service_account = "efs-csi-controller-sa"
       policy_arn          = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
+    }
+  }
+
+  "aws-ebs-csi-driver" = {
+    enabled       = true
+    addon_version = null
+    irsa = {
+      k8s_service_account = "ebs-csi-controller-sa"
+      policy_arn          = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
     }
   }
 }
