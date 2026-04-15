@@ -42,10 +42,10 @@ variable "addons" {
     resolve_conflicts_on_update = optional(string, "OVERWRITE")
     preserve                    = optional(bool, false)
     timeouts = optional(object({
-      create = string
-      update = string
-      delete = string
-    }))
+      create = optional(string)
+      update = optional(string)
+      delete = optional(string)
+    }), {})
     tags = optional(map(string), {})
     irsa = object({
       k8s_service_account = string
