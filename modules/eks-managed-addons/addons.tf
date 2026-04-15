@@ -26,6 +26,12 @@ resource "aws_eks_addon" "addons" {
   resolve_conflicts_on_create = try(each.value.resolve_conflicts_on_create, "OVERWRITE")
   resolve_conflicts_on_update = try(each.value.resolve_conflicts_on_update, "OVERWRITE")
 
+  timeouts {
+    create = try(each.value.timeouts.create, var.eks_addons_timeouts.create, null)
+    update = try(each.value.timeouts.update, var.eks_addons_timeouts.update, null)
+    delete = try(each.value.timeouts.delete, var.eks_addons_timeouts.delete, null)
+  }
+
   tags = merge(
     var.common_tags,
     try(each.value.tags, {}),
