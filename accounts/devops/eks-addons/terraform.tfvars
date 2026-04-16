@@ -36,21 +36,7 @@ helm_charts = {
     repository    = "https://aws.github.io/eks-charts"
     chart         = "aws-load-balancer-controller"
     chart_version = "1.14.0"
-
-    set = [
-      {
-        name  = "clusterName"
-        value = "cicd-eks"
-      },
-      {
-        name  = "serviceAccount.create"
-        value = "true"
-      },
-      {
-        name  = "serviceAccount.name"
-        value = "aws-load-balancer-controller"
-      }
-    ]
+    values = ["values/aws-load-balancer-controller.yaml"]
 
     irsa = {
       k8s_service_account = "aws-load-balancer-controller"
