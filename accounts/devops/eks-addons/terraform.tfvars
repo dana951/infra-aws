@@ -35,12 +35,12 @@ helm_charts = {
     namespace     = "kube-system"
     repository    = "https://aws.github.io/eks-charts"
     chart         = "aws-load-balancer-controller"
-    chart_version = "1.14.0"
+    chart_version = "3.2.1"
     values = ["values/aws-load-balancer-controller.yaml"]
 
     irsa = {
-      k8s_service_account = "aws-load-balancer-controller"
-      policy_document_url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.14.1/docs/install/iam_policy.json"
+      k8s_service_account = "aws-load-balancer-controller-sa"
+      policy_document_url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v3.2.1/docs/install/iam_policy.json"
     }
   }
 }
