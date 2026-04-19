@@ -27,7 +27,7 @@ resource "aws_iam_role" "helm_chart_iam_role" {
         Condition = {
           StringEquals = {
             "${var.oidc_issuer_hostpath}:aud" = "sts.amazonaws.com"
-            "${var.oidc_issuer_hostpath}:sub" = "system:serviceaccount:${try(each.value.namespace, "default")}:${each.value.irsa.k8s_service_account}"
+            "${var.oidc_issuer_hostpath}:sub" = "system:serviceaccount:${each.value.namespace}:${each.value.irsa.k8s_service_account}"
           }
         }
       }

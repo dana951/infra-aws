@@ -20,7 +20,7 @@ variable "oidc_issuer_hostpath" {
 
 variable "helm_charts" {
   type = map(object({
-    enabled             = optional(bool, true)
+    enabled             = optional(bool, false)
     namespace           = optional(string, "default")
     repository          = string
     chart               = string
@@ -39,7 +39,7 @@ variable "helm_charts" {
     })), [])
     wait                = optional(bool, true)
     timeout             = optional(number, 600)
-    atomic              = optional(bool, false)
+    atomic              = optional(bool, true)
     cleanup_on_fail     = optional(bool, true)
     dependency_update   = optional(bool, false)
     irsa = optional(object({
@@ -55,7 +55,6 @@ variable "helm_charts" {
     IMPORTANT: If irsa is configured, the service account name used by the Helm chart
     must be exactly the same as irsa.k8s_service_account.
   EOT
-  default = {}
 }
 
 variable "common_tags" {

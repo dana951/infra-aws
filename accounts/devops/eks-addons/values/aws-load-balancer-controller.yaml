@@ -1,0 +1,4 @@
+clusterName: cicd-eks
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller-sa

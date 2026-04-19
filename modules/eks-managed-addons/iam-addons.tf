@@ -1,7 +1,7 @@
 resource "aws_iam_role" "addon_iam_role" {
   for_each = local.enabled_addons
 
-  name = "${each.key}-irsa-role"
+  name = "${each.key}-addon-irsa-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -25,7 +25,7 @@ resource "aws_iam_role" "addon_iam_role" {
   tags = merge(
     var.common_tags,
     {
-      Name = "${var.name_prefix}-${var.cluster_name}-${each.key}-irsa-role"
+      Name = "${var.name_prefix}-${var.cluster_name}-${each.key}-addon-irsa-role"
     },
   )
 }

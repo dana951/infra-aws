@@ -23,15 +23,30 @@ variable "oidc_issuer_hostpath" {
   description = "OIDC issuer hostpath (without https://)"
 }
 
+variable "eks_addons_timeouts" {
+  type = object({
+    create = optional(string)
+    update = optional(string)
+    delete = optional(string)
+  })
+  description = "Global timeout values for all addons. Used when addon-specific timeouts are not set."
+  default     = null
+}
+
 variable "addons" {
   type = map(object({
-    enabled                     = optional(bool, true)
+    enabled                     = optional(bool, false)
     addon_version               = optional(string)
     configuration_values        = optional(string)
     resolve_conflicts_on_create = optional(string, "OVERWRITE")
     resolve_conflicts_on_update = optional(string, "OVERWRITE")
     preserve                    = optional(bool, false)
-    tags                        = optional(map(string), {})
+    timeouts = optional(object({
+      create = optional(string)
+      update = optional(string)
+      delete = optional(string)
+    }), {})
+    tags = optional(map(string), {})
     irsa = object({
       k8s_service_account = string
       policy_arn          = string
@@ -45,7 +60,6 @@ variable "addons" {
     addon version for the given cluster_version is selected automatically.
     Empty map means no addons.
   EOT
-  default = {}
 }
 
 variable "common_tags" {
