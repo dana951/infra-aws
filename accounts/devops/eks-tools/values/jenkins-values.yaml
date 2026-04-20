@@ -1,30 +1,123 @@
+# =========================
+# Jenkins Controller Config
+# =========================
 controller:
+  # Internal service (ALB will expose it)
   serviceType: ClusterIP
-  admin:
-    createSecret: true
-    user: admin
+
+  # -------------------------
+  # Ingress (AWS ALB)
+  # -------------------------
   ingress:
-    enabled: false
-  resources:
-    requests:
-      cpu: "500m"
-      memory: "1Gi"
-    limits:
-      cpu: "1000m"
-      memory: "2Gi"
+    enabled: true
+    ingressClassName: alb
+
+    hostName: jenkins.my-domain.com
+
+    annotations:
+      kubernetes.io/ingress.class: alb
+
+      # ALB settings
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+
+      # Optional: group with ArgoCD (same ALB)
+      alb.ingress.kubernetes.io/group.name: shared-alb
+
+  # -------------------------
+  # Node placement (jenkins node group)
+  # -------------------------
+  nodeSelector:
+    eks.amazonaws.com/nodegroup: jenkins
+
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "jenkins"
+      effect: "NoSchedule"
+
+  # -------------------------
+  # Persistence (EBS)
+  # -------------------------
   persistence:
     enabled: true
+    storageClass: gp3
+    accessMode: ReadWriteOnce
     size: 20Gi
 
+  # -------------------------
+  # Plugins
+  # -------------------------
+  installPlugins:
+    - kubernetes:4423.vb_59f230b_ce53
+    - workflow-aggregator:608.v67378e9d3db_1
+    - git:5.10.1
+    - configuration-as-code:2061.vc08919f7fc37
+    - aws-secrets-manager-credentials-provider:2.87.v49cc86c50c3b_
+
+  # -------------------------
+  # JCasC (basic)
+  # -------------------------
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      jenkins-config: |
+        jenkins:
+          systemMessage: "Jenkins managed via Helm + JCasC"
+
+  # -------------------------
+  # Sidecar (auto reload JCasC)
+  # -------------------------
+  sidecars:
+    configAutoReload:
+      enabled: true
+
+# =========================
+# Jenkins Agents Config
+# =========================
 agent:
   enabled: true
-  resources:
-    requests:
-      cpu: "200m"
-      memory: "256Mi"
-    limits:
-      cpu: "500m"
-      memory: "512Mi"
 
+  # Agents in separate namespace
+  namespace: jenkins-agents
+
+  # Schedule only on agent node group
+  nodeSelector:
+    eks.amazonaws.com/nodegroup: jenkins-agents
+
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "jenkins-agents"
+      effect: "NoSchedule"
+
+# =========================
+# Persistence (global block)
+# =========================
+persistence:
+  enabled: true
+  storageClass: gp3
+  size: 20Gi
+
+# =========================
+# RBAC
+# =========================
 rbac:
   create: true
+
+# =========================
+# Service Account (for IRSA)
+# =========================
+serviceAccount:
+  create: true
+  name: jenkins
+
+# =========================
+# OPTIONAL: EFS VERSION
+# =========================
+# persistence:
+#   enabled: true
+#   storageClass: efs-sc
+#   accessMode: ReadWriteMany
+#   size: 20Gi
