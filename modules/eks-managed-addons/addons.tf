@@ -6,7 +6,7 @@ locals {
 }
 
 data "aws_eks_addon_version" "latest_version" {
-  for_each = var.addons
+  for_each = local.enabled_addons
 
   addon_name         = each.key
   kubernetes_version = var.cluster_version
@@ -16,11 +16,11 @@ data "aws_eks_addon_version" "latest_version" {
 resource "aws_eks_addon" "addons" {
   for_each = local.enabled_addons
 
-  cluster_name           = var.cluster_name
-  addon_name             = each.key
-  addon_version          = try(each.value.addon_version, data.aws_eks_addon_version.latest_version[each.key].version)
-  configuration_values   = each.value.configuration_values
-  preserve               = each.value.preserve
+  cluster_name             = var.cluster_name
+  addon_name               = each.key
+  addon_version            = try(each.value.addon_version, data.aws_eks_addon_version.latest_version[each.key].version)
+  configuration_values     = each.value.configuration_values
+  preserve                 = each.value.preserve
   service_account_role_arn = aws_iam_role.addon_iam_role[each.key].arn
 
   resolve_conflicts_on_create = each.value.resolve_conflicts_on_create

@@ -25,7 +25,7 @@ variable "helm_charts" {
     repository          = string
     chart               = string
     chart_version       = optional(string)
-    create_namespace    = optional(bool, false)
+    create_namespace    = optional(bool, true)
     values              = optional(list(string), [])
     set = optional(list(object({
       name  = string

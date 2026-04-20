@@ -7,6 +7,8 @@ locals {
       },
     )
   }
+
+  argocd_enabled = try(var.helm_charts.argocd.enabled, false)
 }
 
 module "helm_release" {
@@ -19,4 +21,12 @@ module "helm_release" {
   common_tags          = var.common_tags
 
   helm_charts = local.helm_charts_with_loaded_values
+}
+
+resource "kubernetes_manifest" "argocd_main_app" {
+  count = local.argocd_enabled ? 1 : 0
+
+  manifest = yamldecode(data.http.argocd_main_app_yaml.response_body)
+
+  depends_on = [module.helm_release]
 }
