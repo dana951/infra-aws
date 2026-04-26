@@ -62,7 +62,7 @@ controller:
   JCasC:
     defaultConfig: true
     configScripts:
-      jenkins-config: |
+      welcome-message: |
         jenkins:
           systemMessage: "Jenkins managed via Helm + JCasC"
 
