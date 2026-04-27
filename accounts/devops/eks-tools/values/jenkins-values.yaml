@@ -93,14 +93,6 @@ agent:
       effect: "NoSchedule"
 
 # =========================
-# Persistence (global block)
-# =========================
-persistence:
-  enabled: true
-  storageClass: gp3
-  size: 20Gi
-
-# =========================
 # RBAC
 # =========================
 rbac:
