@@ -6,26 +6,29 @@ This repository is part of the [**eks-gitops-platform**](https://github.com/dana
 ## Jenkins
 Terraform in this repository provisions AWS infrastructure (including EKS) and deploys Jenkins to the cluster using the official Jenkins Helm chart.
 
-Jenkins is configured using **Jenkins Configuration as Code (JCasC)** so controller configuration is declarative, versioned, and reproducible across environments.
+##### JCasC
+- Jenkins is configured using **Jenkins Configuration as Code (JCasC)** so controller configuration is declarative, versioned, and reproducible across environments.
 
-Jenkins build agents run as Kubernetes pods in the cluster, which supports scalable and isolated CI workloads.
+##### Build Agents
+- Jenkins build agents run as Kubernetes pods in the cluster, which supports scalable and isolated CI workloads.
 
-Jenkins data is persisted so controller state survives pod restarts and redeployments.
+##### Persistence
+- Jenkins data is persisted so controller state survives pod restarts and redeployments.
 
-For implementation details, see [Further Reading - Jenkins Configuration as Code (JCasC)](./README.md#jenkins-configuration-as-code-jcasc).
+For implementation details, see [Further Reading - Jenkins Configuration as Code (JCasC)](#jenkins-configuration-as-code-jcasc).
 
 ## Argo CD
 Argo CD is installed in the EKS cluster to provide GitOps-based continuous delivery.
 
-This platform uses the **App of Apps** pattern, where a parent Argo CD application manages child applications for workload components.
+- This platform uses the **App of Apps** pattern, where a parent Argo CD application manages child applications for workload components.
 
-Repository responsibilities are separated: [**infra-aws**](https://github.com/dana951/infra-aws) provisions and bootstraps Argo CD, while [**argocd-apps**](https://github.com/dana951/argocd-apps) contains the GitOps application definitions managed by Argo CD.
+- Repository responsibilities are separated: [**infra-aws**](https://github.com/dana951/infra-aws) provisions and bootstraps Argo CD, while [**argocd-apps**](https://github.com/dana951/argocd-apps) contains the GitOps application definitions managed by Argo CD.
 
-For implementation details, see [Further Reading - Argo CD App of Apps](./README.md#argo-cd-app-of-apps).
+For implementation details, see [Further Reading - Argo CD App of Apps](#argo-cd-app-of-apps).
 
 ## Further Reading
-- [Jenkins Configuration as Code (JCasC)](./README.md#jenkins-configuration-as-code-jcasc)
-- [Argo CD App of Apps](./README.md#argo-cd-app-of-apps)
+- [Jenkins Configuration as Code (JCasC)](#jenkins-configuration-as-code-jcasc)
+- [Argo CD App of Apps](#argo-cd-app-of-apps)
 
 ### Jenkins Configuration as Code (JCasC)
 
