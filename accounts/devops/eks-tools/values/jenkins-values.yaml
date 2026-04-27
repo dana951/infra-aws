@@ -8,43 +8,28 @@ controller:
   # -------------------------
   # Ingress (AWS ALB)
   # -------------------------
-  ingress:
-    enabled: true
-    ingressClassName: alb
+  # ingress:
+  #   enabled: true
+  #   ingressClassName: alb
 
-    hostName: jenkins.my-domain.com
+  #   hostName: jenkins.my-domain.com
 
-    annotations:
-      kubernetes.io/ingress.class: alb
+  #   annotations:
+  #     kubernetes.io/ingress.class: alb
 
-      # ALB settings
-      alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/target-type: ip
-      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+  #     # ALB settings
+  #     alb.ingress.kubernetes.io/scheme: internet-facing
+  #     alb.ingress.kubernetes.io/target-type: ip
+  #     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
 
-      # Optional: group with ArgoCD (same ALB)
-      alb.ingress.kubernetes.io/group.name: shared-alb
+  #     # Optional: group with ArgoCD (same ALB)
+  #     alb.ingress.kubernetes.io/group.name: shared-alb
 
   # -------------------------
   # Node placement (jenkins node group)
   # -------------------------
   nodeSelector:
-    eks.amazonaws.com/nodegroup: jenkins
-
-  tolerations:
-    - key: "dedicated"
-      operator: "Equal"
-      value: "jenkins"
-      effect: "NoSchedule"
-
-  # -------------------------
-  # Persistence (EBS)
-  # -------------------------
-  persistence:
-    enabled: true
-    storageClass: gp3
-    accessMode: ReadWriteOnce
-    size: 20Gi
+    workload/node-group: jenkins
 
   # -------------------------
   # Plugins
@@ -54,7 +39,7 @@ controller:
     - workflow-aggregator:608.v67378e9d3db_1
     - git:5.10.1
     - configuration-as-code:2061.vc08919f7fc37
-    - aws-secrets-manager-credentials-provider:2.87.v49cc86c50c3b_
+    # - aws-secrets-manager-credentials-provider:2.87.v49cc86c50c3b_ - Commented for POC, if uncomment then need to manage dependencies for this plugin
 
   # -------------------------
   # JCasC (basic)
@@ -73,6 +58,15 @@ controller:
     configAutoReload:
       enabled: true
 
+# -------------------------
+# Persistence (EBS) DISABLED for POC, enable in Production
+# -------------------------
+persistence:
+  enabled: false
+  storageClass: ebs-csi
+  accessMode: ReadWriteOnce
+  size: 20Gi
+
 # =========================
 # Jenkins Agents Config
 # =========================
@@ -84,13 +78,7 @@ agent:
 
   # Schedule only on agent node group
   nodeSelector:
-    eks.amazonaws.com/nodegroup: jenkins-agents
-
-  tolerations:
-    - key: "dedicated"
-      operator: "Equal"
-      value: "jenkins-agents"
-      effect: "NoSchedule"
+    workload/node-group: jenkins-agents
 
 # =========================
 # RBAC
@@ -104,12 +92,3 @@ rbac:
 serviceAccount:
   create: true
   name: jenkins
-
-# =========================
-# OPTIONAL: EFS VERSION
-# =========================
-# persistence:
-#   enabled: true
-#   storageClass: efs-sc
-#   accessMode: ReadWriteMany
-#   size: 20Gi

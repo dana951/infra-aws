@@ -35,3 +35,9 @@ dex:
 
 redis:
   enabled: true
+
+# -------------------------
+# Node placement (jenkins node group)
+# -------------------------
+nodeSelector:
+  workload/node-group: jenkins

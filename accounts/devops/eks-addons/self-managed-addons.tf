@@ -3,8 +3,22 @@ locals {
     for release_name, chart in var.helm_charts : release_name => merge(
       chart,
       {
-        values = [for values_file in lookup(chart, "values", []) : file("${path.module}/${values_file}")]
-      },
+        values = [
+          for values_file in lookup(chart, "values", []) : file("${path.module}/${values_file}")
+        ]
+
+        # merge extra dynamic set values per chart (ToDo - might refactor this)
+        set = concat(
+          lookup(chart, "set", []),
+          release_name == "aws-load-balancer-controller" ? [
+            {
+              name  = "vpcId"
+              value = data.terraform_remote_state.eks_cluster.outputs.vpc_id
+              type  = "string"
+            }
+          ] : []
+        )
+      }
     )
   }
 }

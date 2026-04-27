@@ -1,14 +1,14 @@
 aws_region = "us-east-1"
 profile    = "devops"
 
-name_prefix  = "devops"
-cluster_name = "cicd-eks"
+name_prefix     = "devops"
+cluster_name    = "cicd-eks"
 cluster_version = "1.35"
 
 cluster_service_ipv4_cidr = "172.20.0.0/16"
 
-cluster_endpoint_private_access = true
-cluster_endpoint_public_access  = true
+cluster_endpoint_private_access      = true
+cluster_endpoint_public_access       = true
 cluster_endpoint_public_access_cidrs = []
 
 private_node_groups = {
@@ -16,6 +16,9 @@ private_node_groups = {
     min_size     = 1
     max_size     = 1
     desired_size = 1
+    labels = {
+      "workload/node-group" = "jenkins"
+    }
     tags = {
       NodeGroup = "jenkins"
     }
@@ -24,8 +27,23 @@ private_node_groups = {
     min_size     = 1
     max_size     = 1
     desired_size = 1
+    labels = {
+      "workload/node-group" = "jenkins-agents"
+    }
     tags = {
       NodeGroup = "jenkins-agents"
+    }
+  }
+
+  podinfo-app = {
+    min_size     = 1
+    max_size     = 1
+    desired_size = 1
+    labels = {
+      "workload/node-group" = "podinfo-app"
+    }
+    tags = {
+      NodeGroup = "podinfo-app"
     }
   }
 }
