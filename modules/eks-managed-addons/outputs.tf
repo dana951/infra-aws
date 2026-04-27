@@ -4,7 +4,6 @@ output "enabled_addons" {
     for addon_name, addon in aws_eks_addon.addons : addon_name => {
       arn     = addon.arn
       version = addon.addon_version
-      status  = addon.status
     }
   }
 }

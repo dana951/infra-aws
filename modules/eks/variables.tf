@@ -100,3 +100,9 @@ variable "private_node_groups" {
   default     = {}
 }
 
+variable "namespaces" {
+  type        = map(string)
+  description = "Kubernetes namespaces to create after the EKS cluster is provisioned."
+  default     = {}
+}
+
