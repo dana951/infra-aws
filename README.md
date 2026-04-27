@@ -12,7 +12,7 @@ Jenkins build agents run as Kubernetes pods in the cluster, which supports scala
 
 Jenkins data is persisted so controller state survives pod restarts and redeployments.
 
-For implementation details, see [Further Reading - Jenkins Configuration as Code (JCasC)](#jenkins-configuration-as-code-jcasc).
+For implementation details, see [Further Reading - Jenkins Configuration as Code (JCasC)](./README.md#jenkins-configuration-as-code-jcasc).
 
 ## Argo CD
 Argo CD is installed in the EKS cluster to provide GitOps-based continuous delivery.
@@ -21,9 +21,12 @@ This platform uses the **App of Apps** pattern, where a parent Argo CD applicati
 
 Repository responsibilities are separated: [**infra-aws**](https://github.com/dana951/infra-aws) provisions and bootstraps Argo CD, while [**argocd-apps**](https://github.com/dana951/argocd-apps) contains the GitOps application definitions managed by Argo CD.
 
-For implementation details, see [Further Reading - Argo CD App of Apps](#argo-cd-app-of-apps).
+For implementation details, see [Further Reading - Argo CD App of Apps](./README.md#argo-cd-app-of-apps).
 
 ## Further Reading
+- [Jenkins Configuration as Code (JCasC)](./README.md#jenkins-configuration-as-code-jcasc)
+- [Argo CD App of Apps](./README.md#argo-cd-app-of-apps)
+
 ### Jenkins Configuration as Code (JCasC)
 
 In this repository, we explicitly install the JCasC plugin (`configuration-as-code`) in `accounts/devops/eks-tools/values/jenkins-values.yaml` under `controller.installPlugins`.
