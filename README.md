@@ -1,66 +1,434 @@
 # infra-aws
-WIP - Infrastructure provisioning for a production-grade EKS cluster hosting a GitOps-based CI/CD platform (Jenkins/argocd)
 
-This repository is part of the [**eks-gitops-platform**](https://github.com/dana951/eks-gitops-platform) project - GitOps CI/CD workflow on AWS EKS. 
+Terraform infrastructure for a GitOps-based CI/CD platform on AWS EKS.
 
-## Jenkins
-Terraform in this repository provisions AWS infrastructure (including EKS) and deploys Jenkins to the cluster using the official Jenkins Helm chart.
+This repository is part of the larger [`eks-gitops-platform`](https://github.com/dana951/eks-gitops-platform) project.  
+Its responsibility is to provision AWS networking, EKS, cluster add-ons, and core platform tooling (Jenkins + Argo CD).
 
-##### JCasC
-- Jenkins is configured using **Jenkins Configuration as Code (JCasC)** so controller configuration is declarative, versioned, and reproducible across environments.
+## What This Repo Delivers
 
-##### Build Agents
-- Jenkins build agents run as Kubernetes pods in the cluster, which supports scalable and isolated CI workloads.
+- Production-style VPC foundation (public/private subnets, routing, NAT).
+- EKS cluster with private worker node groups dedicated to workloads.
+- EKS add-ons with IRSA-based permissions:
+  - `aws-ebs-csi-driver`
+  - `aws-efs-csi-driver`
+  - `aws-load-balancer-controller`
+- Platform tools deployed by Helm:
+  - Jenkins (with JCasC and Kubernetes agents)
+  - Argo CD (GitOps control plane)
 
-##### Persistence
-- Jenkins data is persisted so controller state survives pod restarts and redeployments.
+## Architecture at a Glance
 
-For implementation details, see [Further Reading - Jenkins Configuration as Code (JCasC)](#jenkins-configuration-as-code-jcasc).
+Provisioning is split into layers (separate Terraform states) to reduce blast radius and simplify operations:
 
-## Argo CD
-Argo CD is installed in the EKS cluster to provide GitOps-based continuous delivery.
+1. `vpc` - network foundation
+2. `eks` - cluster, node groups, OIDC, access entries
+3. `eks-addons` - CSI drivers + ALB controller
+4. `eks-tools` - Jenkins + Argo CD
 
-- This platform uses the **App of Apps** pattern, where a parent Argo CD application manages child applications for workload components.
+Why split states:
+- Smaller, easier-to-review plans
+- Safer changes in fast-moving layers (`eks-tools`, `eks-addons`)
+- Cleaner rollback and troubleshooting boundaries
 
-- Repository responsibilities are separated: [**infra-aws**](https://github.com/dana951/infra-aws) provisions and bootstraps Argo CD, while [**argocd-apps**](https://github.com/dana951/argocd-apps) contains the GitOps application definitions managed by Argo CD.
+## Repository Layout
 
-For implementation details, see [Further Reading - Argo CD App of Apps](#argo-cd-app-of-apps).
+```text
+infra-aws/
+├── accounts/devops/
+│   ├── vpc/         # VPC stack
+│   ├── eks/         # EKS cluster stack
+│   ├── eks-addons/  # EKS addons and related IRSA roles
+│   └── eks-tools/   # Jenkins and Argo CD Helm releases
+└── modules/
+    ├── vpc/
+    ├── eks/
+    ├── eks-managed-addons/
+    └── helm-release/
+```
+
+## Prerequisites
+
+- AWS account and IAM permissions to provision networking, IAM, EKS, and Helm-related resources
+- `terraform` >= 1.14.8
+- `aws` CLI (with profiles configured)
+- `kubectl`
+- `helm`
+- If using an S3/DynamoDB backend, provision those resources in advance.
+- This portfolio uses local Terraform state to minimize cost and keep setup lightweight.
+
+## Access Model (High Level)
+
+- Terraform runs under an assumed execution role (recommended) instead of long-lived admin credentials.
+- EKS access uses **EKS Access Entries** (recommended modern approach), not legacy `aws-auth` ConfigMap customization.
+- Admin access for `kubectl` is done via role assumption and `aws eks update-kubeconfig`.
+
+## Quick Start
+
+Before running Terraform, complete IAM/profile setup in [`Detailed IAM and AWS CLI Setup`](#detailed-iam-and-aws-cli-setup).
+
+> Run from the `infra-aws` repository root.
+
+### 1) Provision base network
+
+```bash
+cd accounts/devops/vpc
+terraform init
+terraform validate
+terraform plan
+terraform apply
+```
+
+### 2) Provision EKS
+
+```bash
+cd ../eks
+terraform init
+terraform validate
+terraform plan
+terraform apply
+```
+
+### 3) Configure kubeconfig
+
+```bash
+aws eks update-kubeconfig \
+  --region us-east-1 \
+  --name cicd-eks \
+  --profile <eks-admin-profile>  # configured in `Detailed IAM and AWS CLI Setup` -> `Configure EKS admin access role`
+
+# Verify you can access the cluster API and list worker nodes
+kubectl get nodes
+```
+
+### 4) Provision cluster add-ons
+
+```bash
+cd ../eks-addons
+terraform init
+terraform validate
+terraform plan
+terraform apply
+```
+
+### 5) Provision platform tools
+
+```bash
+cd ../eks-tools
+terraform init
+terraform validate
+terraform plan
+terraform apply
+```
+
+## Post-Deployment Validation
+
+- Check worker nodes: `kubectl get nodes -o wide`
+- Check addons and controllers:
+  - `kubectl get pods -n kube-system`
+- Check Jenkins namespace:
+  - `kubectl get pods,svc -n jenkins`
+- Check Argo CD namespace:
+  - `kubectl get pods,svc -n argocd`
+
+For local access in this portfolio environment, use port-forward:
+
+```bash
+kubectl port-forward svc/jenkins -n jenkins 8085:8080
+kubectl port-forward svc/argocd-server -n argocd 8086:80
+```
+
+Production-grade access pattern (instead of port-forward):
+- Expose Jenkins and Argo CD through Kubernetes `Ingress` resources.
+- Use the AWS Load Balancer Controller to provision an ALB from those ingress definitions.
+- Use host-based routing rules (for example `jenkins.<domain>` and `argocd.<domain>`).
+- Manage DNS in Route53 with a pre-owned domain/subdomains mapped to the ALB.
+- Terminate TLS with ACM certificates attached via ingress annotations.
+
+## Known Limitation
+
+#### Argo CD CRD plan-time validation in Terraform
+
+`eks-tools` currently includes both:
+- Argo CD Helm installation
+- a `kubernetes_manifest` for an Argo CD `Application`
+
+Terraform validates `kubernetes_manifest` schema during **plan**, but Argo CD CRDs are created only when Helm is **applied**.  
+This can cause plan failure (`no matches for kind "Application" in group "argoproj.io"`).
+
+Recommended production approach:
+- Keep Argo CD Helm install in `eks-tools`
+- Move Argo CD `Application` resources to a separate state/repo executed after CRDs exist
+
+## Detailed IAM and AWS CLI Setup
+
+This section defines the IAM identities and AWS profiles used by this repository.
+
+### 1) Create bootstrap IAM identities
+
+- Create IAM user: `terraform-user` (programmatic access).
+- Create IAM group: `terraform`.
+- Add `terraform-user` to `terraform` group.
+
+### 2) Create Terraform execution role
+
+- Create IAM role: `TerraformExecutionRole`.
+- Use a trust policy that allows your account to assume the role (optionally enforce `ExternalId`):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::YOUR_ACCOUNT_ID:root"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "YOUR_EXTERNAL_ID_SECRET"
+        }
+      }
+    }
+  ]
+}
+```
+
+Attach permissions to `TerraformExecutionRole`:
+- `AmazonVPCFullAccess`
+- `AmazonEC2FullAccess`
+- `CloudWatchLogsFullAccess`
+- `TerraformEKSFullAccess` (custom policy for EKS lifecycle operations)
+- `TerraformIAMForEKSPolicy` (custom IAM policy for EKS-related IAM operations, including restricted `iam:PassRole` and `iam:CreateServiceLinkedRole`)
+
+Custom policy definitions used in this setup:
+
+`TerraformEKSFullAccess`
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TerraformEKSFullAccess",
+      "Effect": "Allow",
+      "Action": "eks:*",
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+`TerraformIAMForEKSPolicy`
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "IAMPermissionsForTerraformEKS",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:GetRole",
+        "iam:ListRoles",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:TagRole",
+        "iam:GetInstanceProfile",
+        "iam:ListInstanceProfiles",
+        "iam:ListInstanceProfilesForRole",
+        "iam:CreateOpenIDConnectProvider",
+        "iam:TagOpenIDConnectProvider",
+        "iam:GetOpenIDConnectProvider",
+        "iam:DeleteOpenIDConnectProvider",
+        "iam:CreatePolicy",
+        "iam:TagPolicy",
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:ListPolicyVersions",
+        "iam:DeletePolicy"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CreateEKSServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::YOUR_ACCOUNT_ID:role/aws-service-role/*",
+      "Condition": {
+        "StringLike": {
+          "iam:AWSServiceName": [
+            "eks.amazonaws.com",
+            "eks-nodegroup.amazonaws.com",
+            "eks-fargate.amazonaws.com",
+            "elasticloadbalancing.amazonaws.com",
+            "ec2.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "PassEksClusterRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::YOUR_ACCOUNT_ID:role/eks-master-role",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "eks.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "PassEksNodeGroupRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::YOUR_ACCOUNT_ID:role/eks-nodegroup-role",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "eks.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "PassEksEBSCSIDriverRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::YOUR_ACCOUNT_ID:role/aws-ebs-csi-driver-addon-irsa-role",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "eks.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "PassEksEFSCSIDriverRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::YOUR_ACCOUNT_ID:role/aws-efs-csi-driver-addon-irsa-role",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "eks.amazonaws.com"
+        }
+      }
+    }
+  ]
+}
+```
+
+Notes:
+- `eks-master-role` and `eks-nodegroup-role` are created during EKS cluster provisioning.
+- `aws-ebs-csi-driver-addon-irsa-role` and `aws-efs-csi-driver-addon-irsa-role` are created when provisioning the EBS/EFS CSI add-ons.
+
+Add this inline policy to `terraform` group so `terraform-user` can assume `TerraformExecutionRole`:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowAssumeTerraformExecutionRole",
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": "arn:aws:iam::YOUR_ACCOUNT_ID:role/TerraformExecutionRole"
+    }
+  ]
+}
+```
+
+### 3) Configure AWS profile for Terraform runs
+
+Configure base credentials:
+
+```bash
+aws configure --profile terraform-user
+```
+
+Add assumed-role profile in `~/.aws/config`:
+
+```ini
+[profile devops]
+role_arn       = arn:aws:iam::YOUR_ACCOUNT_ID:role/TerraformExecutionRole
+source_profile = terraform-user
+region         = us-east-1
+output         = json
+# duration_seconds = 7200
+# external_id = YOUR_EXTERNAL_ID_SECRET
+```
+
+If using `duration_seconds = 7200`, also update the IAM role setting in AWS:
+`IAM -> Roles -> TerraformExecutionRole -> Edit -> Max session duration -> 2 hours`.
+
+Verify:
+
+```bash
+aws sts get-caller-identity --profile devops
+```
+
+### 4) Configure EKS admin access role (for kubectl and AWS Console visibility)
+
+- Create IAM role: `DevopsAdminRole`.
+- Attach policy: `AdministratorAccess` (portfolio setup).
+- Create admin user: `devops-admin` and place it in `admins` group (console user that can view EKS resources in AWS Console, and base profile for role assumption).
+- Allow `admins` group to assume `DevopsAdminRole` with an inline policy:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowAssumeDevopsAdminRole",
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": "arn:aws:iam::YOUR_ACCOUNT_ID:role/DevopsAdminRole"
+    }
+  ]
+}
+```
+
+Configure AWS CLI profiles for cluster administration:
+
+```bash
+aws configure --profile admin
+```
+
+```ini
+[profile eks-admin]
+role_arn       = arn:aws:iam::YOUR_ACCOUNT_ID:role/DevopsAdminRole
+source_profile = admin
+region         = us-east-1
+output         = json
+# duration_seconds = 7200
+```
+
+If using `duration_seconds = 7200`, also update:
+`IAM -> Roles -> DevopsAdminRole -> Edit -> Max session duration -> 2 hours`.
+
+### 5) EKS Access Entry mapping
+
+The EKS layer maps `DevopsAdminRole` and `TerraformExecutionRole` to the EKS cluster admin policy using **EKS Access Entries** (`AmazonEKSClusterAdminPolicy`), which is the modern replacement for direct `aws-auth` management.
+
 
 ## Further Reading
-- [Jenkins Configuration as Code (JCasC)](#jenkins-configuration-as-code-jcasc)
-- [Argo CD App of Apps](#argo-cd-app-of-apps)
 
-### Jenkins Configuration as Code (JCasC)
+### Project Repositories
 
-In this repository, we explicitly install the JCasC plugin (`configuration-as-code`) in `accounts/devops/eks-tools/values/jenkins-values.yaml` under `controller.installPlugins`.
+- Platform umbrella project: [`eks-gitops-platform`](https://github.com/dana951/eks-gitops-platform)
+- GitOps apps repo used by Argo CD: [`argocd-apps`](https://github.com/dana951/argocd-apps)
 
-We also install the Jenkins Kubernetes plugin (`kubernetes`) from the same values file (`controller.installPlugins`) to run agents as pods in EKS.
+### AWS / Kubernetes Documentation
 
-How jcasc works during deployment:
-- We define [Jenkins](#jenkins) configuration in Helm values (`controller.JCasC`).
-- When Helm deploys Jenkins, it creates a JCasC ConfigMap named `jenkins-jenkins-jcasc-config` that contains YAML data (for example, `jcasc-default-config.yaml`).
-- This ConfigMap is used by the Jenkins config-reload sidecar (`kiwigrid/k8s-sidecar`), which is enabled through `controller.sidecars.configAutoReload`.
-- The `kiwigrid/k8s-sidecar` is a utility container used in Jenkins Kubernetes deployments to  
-  automate configuration updates without requiring a manual restart of the Jenkins controller
-- The sidecar monitors only ConfigMaps that have specific labels (e.g: `jenkins-jenkins-config: "true"`).
-- The sidecar reads the ConfigMap data and writes it as YAML files into `/var/jenkins_home/casc_configs` (via shared volume accessible by the Jenkins container).
-- The Jenkins container sets `CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs`.
-- The Jenkins Configuration as Code plugin reads that path and applies the YAML on startup.
-- If configuration changes later, the sidecar calls Jenkins reload endpoint (`/reload-configuration-as-code`) so JCasC is re-applied without a full controller restart.
-
-Agent and persistence details:
-- Jenkins agents are enabled as Kubernetes pods (`agent.enabled: true`) in namespace `jenkins-agents`.
-- Agent pod placement is controlled with `agent.nodeSelector` and `agent.tolerations` to target the dedicated `jenkins-agents` node group.
-- Jenkins relies on the cluster `aws-ebs-csi-driver` addon for dynamic EBS volume provisioning; the Helm chart uses PVC/StorageClass resources 
-- Persistent storage is enabled with `ebs-csi` which is the StorageClass that uses the ebs.csi.aws.com provisioner (`persistence.enabled`, `persistence.storageClass`, `persistence.size`).
-
-
-### Argo CD App of Apps
-How it works during deployment:
-- Terraform installs Argo CD via Helm into the `argocd` namespace.
-- Terraform then applies `argocd_main_app` from the [**argocd-apps**](https://github.com/dana951/argocd-apps) repository.
-- That parent application points to child Argo CD Applications (App of Apps pattern).
-- Each child application manages the `podinfo` application for a specific environment (dev, qa, staging, prod).
-- Argo CD continuously reconciles applications from Git to cluster state.
-
+- [Amazon EKS access entries](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html)
+- [Amazon EKS add-ons](https://docs.aws.amazon.com/eks/latest/userguide/workloads-add-ons-available-eks.html)
+- [AWS Load Balancer Controller](https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html)
+- [Jenkins Configuration as Code](https://www.jenkins.io/projects/jcasc/)
+- [Argo CD - App of Apps pattern](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/)
 
