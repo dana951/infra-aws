@@ -5,6 +5,11 @@ controller:
   # Internal service (ALB will expose it)
   serviceType: ClusterIP
 
+  # Disable JNLP (TCP 50000) agent listener; WebSocket agents are used instead
+  agentListenerEnabled: false
+
+  jenkinsUrl: "http://jenkins.jenkins.svc.cluster.local:8080"
+
   # -------------------------
   # Ingress (AWS ALB)
   # -------------------------
@@ -20,7 +25,7 @@ controller:
   #     # ALB settings
   #     alb.ingress.kubernetes.io/scheme: internet-facing
   #     alb.ingress.kubernetes.io/target-type: ip
-  #     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+  #     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
 
   #     # Optional: group with ArgoCD (same ALB)
   #     alb.ingress.kubernetes.io/group.name: shared-alb
@@ -39,7 +44,8 @@ controller:
     - workflow-aggregator:608.v67378e9d3db_1
     - git:5.10.1
     - configuration-as-code:2061.vc08919f7fc37
-    # - aws-secrets-manager-credentials-provider:2.87.v49cc86c50c3b_ - Commented for POC, if uncomment then need to manage dependencies for this plugin
+    - job-dsl:3654.vdf58f53e2d15
+    # - aws-secrets-manager-credentials-provider:2.87.v49cc86c50c3b_ - dependencies issues for this plugin
 
   # -------------------------
   # JCasC (basic)
@@ -47,9 +53,100 @@ controller:
   JCasC:
     defaultConfig: true
     configScripts:
-      welcome-message: |
+      jenkins-config: |
         jenkins:
           systemMessage: "Jenkins managed via Helm + JCasC"
+
+          # -------------------------
+          # SECURITY REALM (Authentication)
+          # -------------------------
+          securityRealm:
+            local:
+              allowsSignup: false   # Users cannot self-register
+
+          # -------------------------
+          # AUTHORIZATION STRATEGY (Permissions)
+          # -------------------------
+          authorizationStrategy:
+            loggedInUsersCanDoAnything:
+              allowAnonymousRead: false
+
+          # -------------------------
+          # KUBERNETES CLOUD (Agents)
+          # -------------------------
+          # Jenkins uses Kubernetes to dynamically create build agents (pods).
+          clouds:
+            - kubernetes:
+                name: "kubernetes"
+                # RECOMMENDED: Enables single-port communication over HTTP
+                webSocket: true
+                skipTlsVerify: true
+
+                # Limits the number of concurrent agent pods Jenkins can create.
+                # Prevents cluster overload and controls cost (for this demo).
+                containerCapStr: "5"
+                namespace: "jenkins-agents"  # build agents will run in this namespace
+
+        # -------------------------
+        # GLOBAL CONFIGURATION
+        # -------------------------
+        unclassified:
+          location:
+            # Admin contact (appears in UI/system emails)
+            adminAddress: "devops-demo@example.com"
+
+          # -------------------------
+          # Shared Jenkins Library
+          # -------------------------
+          globalLibraries:
+            libraries:
+              - name: "jenkins-shared-lib"
+                defaultVersion: "jenkins"
+                retriever:
+                  modernSCM:
+                    scm:
+                      git:
+                        remote: "https://github.com/dana951/jenkins-shared-lib.git"
+
+        # -------------------------
+        # JOB DEFINITION (Pipeline)
+        # -------------------------
+        # Automatically creates a pipeline job when Jenkins starts.
+        # needs job-dsl Plugin
+        jobs:
+          - script: >
+              pipelineJob('podinfo-pr-validation') {
+                description('Validation pipeline for Pull Requests.')
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/dana951/app-source.git')
+                        }
+                        branches('*/main')
+                      }
+                    }
+                    scriptPath('Jenkinsfile.dev')
+                  }
+                }
+              }
+              pipelineJob('podinfo-prod-deploy') {
+                description('Production deployment pipeline for merged code.')
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/dana951/app-source.git')
+                        }
+                        branches('*/main')
+                      }
+                    }
+                    scriptPath('Jenkinsfile.prod')
+                  }
+                }
+              }
 
   # -------------------------
   # Sidecar (auto reload JCasC)
@@ -75,10 +172,19 @@ agent:
 
   # Agents in separate namespace
   namespace: jenkins-agents
+  serviceAccountName: jenkins-agent
 
   # Schedule only on agent node group
   nodeSelector:
     workload/node-group: jenkins-agents
+
+# =========================
+# Service Account (for Agents)
+# =========================
+# This handles the actual creation of the ServiceAccount object
+serviceAccountAgent:
+  create: true
+  name: jenkins-agent
 
 # =========================
 # RBAC
@@ -92,3 +198,33 @@ rbac:
 serviceAccount:
   create: true
   name: jenkins
+
+# =========================
+# Extra Objects
+# =========================
+extraObjects:
+  # Define the Role in the 'argocd' namespace
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      namespace: argocd
+      name: jenkins-agent-argocd-read-role
+    rules:
+      - apiGroups: ["argoproj.io"]
+        resources: ["applications"]
+        verbs: ["get", "list", "watch"]
+
+  # Bind the 'jenkins-agent' ServiceAccount to this Role
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      namespace: argocd
+      name: jenkins-agent-argocd-read-binding
+    subjects:
+      - kind: ServiceAccount
+        name: jenkins-agent
+        namespace: jenkins-agents
+    roleRef:
+      kind: Role
+      name: jenkins-agent-argocd-read-role
+      apiGroup: rbac.authorization.k8s.io
