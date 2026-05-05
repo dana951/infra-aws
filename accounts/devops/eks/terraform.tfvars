@@ -35,6 +35,18 @@ private_node_groups = {
     }
   }
 
+  github-runners = {
+    min_size     = 1
+    max_size     = 1
+    desired_size = 1
+    labels = {
+      "workload/node-group" = "github-runners"
+    }
+    tags = {
+      NodeGroup = "github-runners"
+    }
+  }
+
   podinfo-app = {
     min_size     = 1
     max_size     = 1
