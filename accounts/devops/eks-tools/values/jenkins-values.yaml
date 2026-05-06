@@ -131,6 +131,8 @@ controller:
                   }
                 }
               }
+
+          - script: >
               pipelineJob('podinfo-prod-deploy') {
                 description('Production deployment pipeline for merged code.')
                 definition {
