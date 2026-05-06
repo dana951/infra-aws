@@ -7,11 +7,11 @@ global:
 # Https --> ALB --> HTTPS (in VPC) --> ArgoCD server pod (self signed certificate)
 ########################################################
 
-# the Kubernetes Service (the argocd-server service) 
+# the argocd-server **k8s Service**
 # usually has two ports defined (80 and 443).
-# Port 443 on the service points to the pod's "secure" port.
-# Port 80 on the service points to the pod's "insecure" port.
-# However, the Argo CD application code inside the pod 
+# Port 443 on the service.
+# Port 80 on the service , which usually redirects to port 443.
+# However, the argocd-server **pod** 
 # generally only listens on **one** actual port (usually 8080). 
 # The 'server.insecure' flag determines whether that one port 
 # speaks HTTPS or HTTP. 
@@ -22,8 +22,6 @@ global:
 # argocd server will generate its own self-signed certificate 
 # and listen for HTTPS requests on port 8080
 
-# for plain HTTP traffic, the connection will fail or be rejected 
-# because the argocd server is expecting a TLS handshake
 configs:
   params:
     server.insecure: false
@@ -37,149 +35,46 @@ server:
   # -------------------------
   # Ingress (AWS ALB)
   # ------------------------- 
-  # -------------------------------------------------------------------------------------
-  # INGRESS GROUP LOGIC SUMMARY:
-  # 1. 'group.name' merges both Ingresses into ONE physical AWS Load Balancer.
-  # 2. The "Main" Ingress defines the ALB Listeners (Ports 80/443, SSL Redirect, ACM Cert).
-  # 3. The "ingressGrpc" inherits these Listener settings; it simply adds a new 
-  #    host-based Routing Rule and a gRPC-specific Target Group to the existing ALB.
-  # -------------------------------------------------------------------------------------
   ingress:
-    # Currently disabled for POC
     enabled: false
-    # Use the AWS Load Balancer Controller
+    # AWS Load Balancer Controller
+    controller: aws
     ingressClassName: alb
     annotations:
-      # ------------------------------------------------------------
-      # Merges this with 'ingressGrpc' into one physical ALB
-      # ------------------------------------------------------------
-      # Joins this Ingress with others (e.g jenkins) into a single physical ALB
       alb.ingress.kubernetes.io/group.name: dev-tools-alb
-      # Creates a public-facing load balancer
       alb.ingress.kubernetes.io/scheme: internet-facing
-      # Routes traffic directly to Pod IPs for better performance in EKS
       alb.ingress.kubernetes.io/target-type: ip
-      # External ports the ALB will open to the world
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
-      # Forces all port 80 traffic to redirect to 443 automatically
       alb.ingress.kubernetes.io/ssl-redirect: '443'
-      # The ARN for your ACM Wildcard certificate (*.example.com), ToDo - need to create ACM certificate for argocd domain
       alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:REGION:ACCOUNT:certificate/UUID
-      
-      # ------------------------------------------------------------
-      # Backend Settings for Web UI (HTTPS/HTML)
-      # ------------------------------------------------------------
-      # Tell the ALB to use the HTTPS port for Health Checks
-      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
-      # Health check configuration
-      alb.ingress.kubernetes.io/healthcheck-path: /healthz
-      # Internal protocol between ALB and Pod; we want E2E encryption so 
-      # matches 'server.insecure: false' (i.e argocd listens only for HTTPS with self-signed certificate)
-      alb.ingress.kubernetes.io/backend-protocol: HTTPS
-      # Argo CD server handles two types of traffic on the same port:
-      # Standard Web UI (HTTPS/HTML)
-      # ArgoCD CLI communicates over gRPC, which uses HTTP/2
-      # Enable gRPC support for the ArgoCD CLI
-      # with this HTTPS, we use Single ALB for gRPC and Web traffic
-      # then in argocd cli need to use --grpc-web flag
-      # This wraps gRPC calls in standard HTTP requests that the ALB can handle without special configuration
-      # i.e, Log in using grpc-web (works through ALB without special config)
-      # argocd login argocd.example.com --grpc-web
-      alb.ingress.kubernetes.io/backend-protocol-version: HTTP2
-
-
-      # ------------------------------------------------------------
-      # ExternalDNS controller
-      # ------------------------------------------------------------
-      # using ExternalDNS controller, ('example.com' Hosted Zone need to exist in Route53)
-      # Note - Comment this annotation if not using ExternalDNS controller
-      # then we need to create a Route53 Alias record pointing 
-      # argocd.example.com to the ALB DNS name
+      # ExternalDNS for the single domain
       external-dns.alpha.kubernetes.io/hostname: argocd.example.com
-
-      # Uncomment this if we choose to enable "ingressGrpc" 
-      # to set seperate ALB Listener Rule explicitly to 
-      # forward traffic to a different Target Group for GRPC traffic.
-      # Priority: Lower number = higher priority in the ALB listener rules
-
-      # alb.ingress.kubernetes.io/group.order: "10"
+      
+      # Since insecure is false, ALB must talk to pods via HTTPS
+      alb.ingress.kubernetes.io/backend-protocol: HTTPS
+      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
+      alb.ingress.kubernetes.io/healthcheck-path: /healthz
 
       # ------------------------------------------------------------
-      # Security Groups
+      # Sequrity Groups:
       # ------------------------------------------------------------
-      # To create ALB SG with specific SG(s) pre configured in the VPC
-      # Or dynamically create SG with specific CIDR(s)
-      # If this annotation not used - ALB create a default SG that allows traffic from all IPs
-      # in any case a Backend SG It automatically creates/manages so the ALB can talk to your Pods (to access the EKS worker nodes)
-      # Uncomment this - To Attach specific existing Security Groups by ID or Name
-
-      # alb.ingress.kubernetes.io/security-groups: sg-0123456789abcdef0, my-custom-sg
+      # Automatically creates a Security Group and restricts access to these IPs
+      # alb.ingress.kubernetes.io/inbound-cidrs: "1.2.3.4/32, 5.6.7.8/32"
 
       # OR
-      # Uncomment this - for Automatically creates an SG and allows traffic only from these IPs
 
-      # alb.ingress.kubernetes.io/inbound-cidrs: "1.2.3.4/32, 5.6.7.8/32"
+      # Attach your existing Security Group ID
+      # and tell the controller to still manage the "internal" rules 
+      # so the ALB can reach the Argo CD pods on the EKS nodes
+      # alb.ingress.kubernetes.io/security-groups: sg-1234567890abcdef0
+      # alb.ingress.kubernetes.io/manage-backend-security-group-rules: "true"
     
-    # Host-based routing rule
-    hosts:
-      # This is the "Host Header" the ALB looks for
-      - argocd.example.com
-    paths:
-      - /
-    pathType: Prefix
+    # Specific AWS settings within the server block
+    aws:
+      serviceType: ClusterIP
+      # This tells the second Service/TargetGroup to use Native gRPC
+      backendProtocolVersion: GRPC
 
-    # ---------------------------------------------------------
-    # Native gRPC (No --grpc-web flag needed in argocd cli)
-    # ---------------------------------------------------------
-    # If we want to use argocd cli without the need to use --grpc-web flag 
-    # we will enable the 'ingressGrpc'
-    # Doing so we will have one single Load Balancer 
-    # with two different Listener **Rules** and two separate Target Groups. 
-    # (It does not create a second ALB)
-    # it just adds another Rule to the ALB Listener 
-    # each rule forward to a different Target Group.
-    # Rule Priority: set to 20, higher than the Web UI rule (10)
-
-
-    # ---------------------------------------------------------
-    # IngressGrpc: Native gRPC (For CLI access)
-    # ---------------------------------------------------------
-    # argocd login grpc.argocd.example.com 
-    # (without --grpc-web flag in argocd cli)
-    ingressGrpc:
-      # Currently disabled for POC
-      enabled: false
-      ingressClassName: alb
-      annotations:
-        # MUST match Main Ingress to stay on the same ALB
-        alb.ingress.kubernetes.io/group.name: dev-tools-alb
-        alb.ingress.kubernetes.io/scheme: internet-facing
-        alb.ingress.kubernetes.io/target-type: ip
-        # Inherited listeners from Main Ingress, but repeating cert-arn is safer
-        alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:REGION:ACCOUNT:certificate/UUID
-        
-        # ------------------------------------------------------------
-        # Backend Settings for Native gRPC
-        # ------------------------------------------------------------
-        alb.ingress.kubernetes.io/backend-protocol: HTTPS
-        alb.ingress.kubernetes.io/backend-protocol-version: GRPC
-        alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
-        alb.ingress.kubernetes.io/healthcheck-path: /healthz
-        
-        # Rule Priority (Higher than web)
-        alb.ingress.kubernetes.io/group.order: "20"
-        
-        # ExternalDNS for the gRPC subdomain
-        external-dns.alpha.kubernetes.io/hostname: grpc.argocd.example.com
-
-        # Priority: Set higher than Web UI to keep rules distinct
-        alb.ingress.kubernetes.io/group.order: "20"
-      
-      hosts:
-        - grpc.argocd.example.com
-      paths:
-        - path: /
-          pathType: Prefix
 
 controller:
   replicas: 1
