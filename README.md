@@ -190,7 +190,7 @@ kubectl apply -f argocd-github-app-secret.yml
 
 For additional production considerations, see [`eks-gitops-platform - production considerations`](https://github.com/dana951/eks-gitops-platform#production-considerations).
 
-### 3) Argo CD CRD - 'Terraform Plan' Validation
+### 3) Argo CD CRD - Terraform Plan Validation
 
 `eks-tools` currently includes both:
 - Argo CD Helm installation
