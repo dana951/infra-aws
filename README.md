@@ -47,25 +47,32 @@ infra-aws/
     └── helm-release/
 ```
 
-## Prerequisites
+> **Important:** 
+> This repository is not standalone; it is part of the [`eks-gitops-platform`](https://github.com/dana951/eks-gitops-platform).  
+> For a full platform test drive, fork/clone all repositories listed in [`project repositories`](https://github.com/dana951/eks-gitops-platform#project-repositories) into your own GitHub account, then update configs to point to your clones (for example, set repo url in the Jenkins helm values - `accounts/devops/eks-tools/values/jenkins-values.yaml`).
 
-- AWS account and IAM permissions to provision networking, IAM, EKS, and Helm-related resources
+## Prerequisites
+- AWS account and [IAM permissions](#detailed-iam-and-aws-cli-setup) to provision networking, IAM, EKS, and Helm-related resources
 - `terraform` >= 1.14.8
-- `aws` CLI (with profiles configured)
+- `aws`
 - `kubectl`
 - `helm`
-- If using an S3/DynamoDB backend, provision those resources in advance.
-- This portfolio uses local Terraform state to minimize cost and keep setup lightweight.
+- If using an `S3/DynamoDB` backend, provision those resources in advance.
+- Create a [GitHub App](https://oneuptime.com/blog/post/2026-02-26-argocd-github-app-credentials/view) for Argo CD and install it in your own [`gitops-manifests`](https://github.com/dana951/gitops-manifests) repository instance.
+
+> Note: This portfolio uses local Terraform state to minimize cost and keep setup lightweight.
+
+> Note: For Argo CD flow, operations context, and how the GitHub App is used, see [`argocd-apps`](https://github.com/dana951/argocd-apps).
 
 ## Access Model (High Level)
 
 - Terraform runs under an assumed execution role (recommended) instead of long-lived admin credentials.
-- EKS access uses **EKS Access Entries** (recommended modern approach), not legacy `aws-auth` ConfigMap customization.
+- EKS access uses [EKS Access Entries](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html) (recommended modern approach), not legacy `aws-auth` ConfigMap customization.
 - Admin access for `kubectl` is done via role assumption and `aws eks update-kubeconfig`.
 
 ## Quick Start
 
-Before running Terraform, complete IAM/profile setup in [`Detailed IAM and AWS CLI Setup`](#detailed-iam-and-aws-cli-setup).
+Before running Terraform, make sure all prerequisites are completed.
 
 > Run from the `infra-aws` repository root.
 
@@ -134,8 +141,8 @@ terraform apply
 For local access in this portfolio environment, use port-forward:
 
 ```bash
-kubectl port-forward svc/jenkins -n jenkins 8085:8080
-kubectl port-forward svc/argocd-server -n argocd 8086:80
+kubectl port-forward svc/jenkins -n jenkins 8080:8080
+kubectl port-forward svc/argocd-server -n argocd 8081:80
 ```
 
 Production-grade access pattern (instead of port-forward):
@@ -145,9 +152,45 @@ Production-grade access pattern (instead of port-forward):
 - Manage DNS in Route53 with a pre-owned domain/subdomains mapped to the ALB.
 - Terminate TLS with ACM certificates attached via ingress annotations.
 
-## Known Limitation
+## Known Limitations
 
-#### Argo CD CRD plan-time validation in Terraform
+### 1) Secret Management
+A secure secret management mechanism is not implemented in this infrastructure yet.
+
+Current workaround:
+- Create an Argo CD repository secret that stores the GitHub App private key (`.pem`), App ID, and Installation ID; this secret is used by the Argo CD `ApplicationSet` in [`argocd-apps`](https://github.com/dana951/argocd-apps).
+- Reference: [Using a declarative secret](https://oneuptime.com/blog/post/2026-02-26-argocd-github-app-credentials/view#using-a-declarative-secret)
+
+```yaml
+# argocd-github-app-secret.yml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitops-manifests-github-app
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  type: git
+  url: https://github.com/your-org/gitops-manifests
+  githubAppID: "123456"
+  githubAppInstallationID: "12345678"
+  githubAppPrivateKey: |
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpAIBAAKCAQEA... (your full private key here)
+    -----END RSA PRIVATE KEY-----
+```
+
+```bash
+kubectl apply -f argocd-github-app-secret.yml
+```
+
+
+### 2) Production Considerations
+
+For additional production considerations, see [`eks-gitops-platform - production considerations`](https://github.com/dana951/eks-gitops-platform#production-considerations).
+
+### 3) Argo CD CRD Plan-Time Validation in Terraform
 
 `eks-tools` currently includes both:
 - Argo CD Helm installation

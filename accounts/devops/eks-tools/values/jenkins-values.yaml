@@ -8,27 +8,70 @@ controller:
   # Disable JNLP (TCP 50000) agent listener; WebSocket agents are used instead
   agentListenerEnabled: false
 
+
+  # ------------------------------------------------------------
+  # External URL Configuration
+  # ------------------------------------------------------------
+  # Note - From jenkins chart README.md
+  # If you are using the ingress definitions provided by this chart via the 
+  # `controller.ingress` block the configured hostname will be the ingress hostname 
+  # starting with `https://` or `http://` depending on the `tls` configuration.
+  # The Protocol can be overwritten by specifying `controller.jenkinsUrlProtocol`.
+  
+  # jenkinsUrlProtocol: "https"
+
+  # Note - From jenkins chart README.md
+  # If you are not using the provided ingress you can specify `
+  # controller.jenkinsUrl` to change the URL definition.
   jenkinsUrl: "http://jenkins.jenkins.svc.cluster.local:8080"
 
   # -------------------------
   # Ingress (AWS ALB)
   # -------------------------
-  # ingress:
-  #   enabled: true
-  #   ingressClassName: alb
+  ingress:
+    enabled: false
+    hostName: jenkins.example.com
+    # Use the AWS Load Balancer Controller
+    ingressClassName: alb
+    annotations:
+      # Joins this Ingress with others (e.g argocd) into a single physical ALB
+      alb.ingress.kubernetes.io/group.name: dev-tools-alb
+      # Creates a public-facing load balancer
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      # Routes traffic directly to Pod IPs for better performance in EKS
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+      # ToDo - Check E2E encryption
+      # # External ports the ALB will open to the world
+      # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+      # # Forces all port 80 traffic to redirect to 443 automatically
+      # alb.ingress.kubernetes.io/ssl-redirect: '443'
+      # The ARN for your ACM Wildcard certificate (*.example.com)
+      # Same ACM certificate used for host-based routing
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:REGION:ACCOUNT:certificate/UUID
 
-  #   hostName: jenkins.my-domain.com
+      # ExternalDNS for the single domain
+      external-dns.alpha.kubernetes.io/hostname: jenkins.example.com
+      
+      # Since insecure is false, ALB must talk to pods via HTTPS
+      alb.ingress.kubernetes.io/backend-protocol: HTTPS
+      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
+      alb.ingress.kubernetes.io/healthcheck-path: /healthz
 
-  #   annotations:
-  #     kubernetes.io/ingress.class: alb
+      # ------------------------------------------------------------
+      # Sequrity Groups:
+      # ------------------------------------------------------------
+      # Automatically creates a Security Group and restricts access to these IPs
+      # alb.ingress.kubernetes.io/inbound-cidrs: "1.2.3.4/32, 5.6.7.8/32"
 
-  #     # ALB settings
-  #     alb.ingress.kubernetes.io/scheme: internet-facing
-  #     alb.ingress.kubernetes.io/target-type: ip
-  #     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+      # OR
 
-  #     # Optional: group with ArgoCD (same ALB)
-  #     alb.ingress.kubernetes.io/group.name: shared-alb
+      # Attach your existing Security Group ID
+      # and tell the controller to still manage the "internal" rules 
+      # so the ALB can reach the Argo CD pods on the EKS nodes
+      # alb.ingress.kubernetes.io/security-groups: sg-1234567890abcdef0
+      # alb.ingress.kubernetes.io/manage-backend-security-group-rules: "true"
+
 
   # -------------------------
   # Node placement (jenkins node group)
@@ -131,6 +174,8 @@ controller:
                   }
                 }
               }
+
+          - script: >
               pipelineJob('podinfo-prod-deploy') {
                 description('Production deployment pipeline for merged code.')
                 definition {

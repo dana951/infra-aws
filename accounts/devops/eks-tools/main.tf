@@ -10,6 +10,15 @@ locals {
 
   argocd_enabled    = try(var.helm_charts.argocd.enabled, false)
   jenkins_agents_ns = "jenkins-agents"
+
+  # ToDo - Patch for now, explicitly create the argocd namespace
+  # instead of waiting for the argocd helm chart to create the namespace
+  # This is because in this POC Jenkins check argocd Application helth via
+  # kubectl instead of using argocd cli
+  # Fix to prouction - wire secret manager mechanism for handle secrets
+  # (argocd token for Jenkins to use for accessing argocd api) 
+  argocd_ns = "argocd"
+
 }
 
 module "helm_release" {
@@ -29,6 +38,10 @@ module "helm_release" {
   ]
 }
 
+# ToDo - Need to Move this to new terraform folder
+# terraform apply fails because it check Argo CD Application 
+# CRD before it install the Argo CD Helm chart - race condition
+# We shell not install argocd and creae Application manifest in same terraform state
 resource "kubernetes_manifest" "argocd_main_app" {
   count = local.argocd_enabled ? 1 : 0
 
@@ -57,5 +70,13 @@ resource "kubernetes_storage_class_v1" "ebs_csi" {
 resource "kubernetes_namespace_v1" "jenkins_agents" {
   metadata {
     name = local.jenkins_agents_ns
+  }
+}
+
+# ToDo - Patch for now, explicitly create the argocd namespace
+# See comments in local.argocd_ns
+resource "kubernetes_namespace_v1" "argocd" {
+  metadata {
+    name = local.argocd_ns
   }
 }

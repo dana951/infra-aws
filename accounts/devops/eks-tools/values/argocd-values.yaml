@@ -1,25 +1,80 @@
 global:
   domain: ""
+  # domain: "argocd.example.com"
+
+########################################################
+# Configuring E2E encryption from ALB -> to ArgoCD server pod
+# Https --> ALB --> HTTPS (in VPC) --> ArgoCD server pod (self signed certificate)
+########################################################
+
+# the argocd-server **k8s Service**
+# usually has two ports defined (80 and 443).
+# Port 443 on the service.
+# Port 80 on the service , which usually redirects to port 443.
+# However, the argocd-server **pod** 
+# generally only listens on **one** actual port (usually 8080). 
+# The 'server.insecure' flag determines whether that one port 
+# speaks HTTPS or HTTP. 
+# It does not run two separate listeners simultaneously
+
+# 'server.insecure: false' means 
+# Argo CD server pod listens only for HTTPS.
+# argocd server will generate its own self-signed certificate 
+# and listen for HTTPS requests on port 8080
 
 configs:
   params:
-    server.insecure: true
+    server.insecure: false
 
 server:
+  
   service:
+   # Standard internal service type for ALB 'ip' mode
     type: ClusterIP
+  
+  # -------------------------
+  # Ingress (AWS ALB)
+  # ------------------------- 
   ingress:
     enabled: false
+    # AWS Load Balancer Controller
+    controller: aws
     ingressClassName: alb
     annotations:
+      alb.ingress.kubernetes.io/group.name: dev-tools-alb
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/target-type: ip
-      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
-      alb.ingress.kubernetes.io/backend-protocol: HTTP
-    paths:
-      - /
-    pathType: Prefix
-    tls: []
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+      alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:REGION:ACCOUNT:certificate/UUID
+      # ExternalDNS for the single domain
+      external-dns.alpha.kubernetes.io/hostname: argocd.example.com
+      
+      # Since insecure is false, ALB must talk to pods via HTTPS
+      alb.ingress.kubernetes.io/backend-protocol: HTTPS
+      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
+      alb.ingress.kubernetes.io/healthcheck-path: /healthz
+
+      # ------------------------------------------------------------
+      # Sequrity Groups:
+      # ------------------------------------------------------------
+      # Automatically creates a Security Group and restricts access to these IPs
+      # alb.ingress.kubernetes.io/inbound-cidrs: "1.2.3.4/32, 5.6.7.8/32"
+
+      # OR
+
+      # Attach your existing Security Group ID
+      # and tell the controller to still manage the "internal" rules 
+      # so the ALB can reach the Argo CD pods on the EKS nodes
+      # alb.ingress.kubernetes.io/security-groups: sg-1234567890abcdef0
+      # alb.ingress.kubernetes.io/manage-backend-security-group-rules: "true"
+    
+    # Specific AWS settings within the server block
+    aws:
+      serviceType: ClusterIP
+      # This tells the second Service/TargetGroup to use Native gRPC
+      backendProtocolVersion: GRPC
+
 
 controller:
   replicas: 1

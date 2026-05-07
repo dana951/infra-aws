@@ -18,7 +18,7 @@ helm_charts = {
     namespace        = "argocd"
     repository       = "https://argoproj.github.io/argo-helm"
     chart            = "argo-cd"
-    chart_version    = "9.5.0"
+    chart_version    = "9.5.2"
     create_namespace = true
     values           = ["values/argocd-values.yaml"]
   }
