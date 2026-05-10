@@ -88,6 +88,9 @@ controller:
     - git:5.10.1
     - configuration-as-code:2061.vc08919f7fc37
     - job-dsl:3654.vdf58f53e2d15
+    - github-branch-source:1967.1969.v205fd594c821
+    - apache-httpcomponents-client-5-api:5.6.1-195.v65ffe15189a_d # dependencies issues for slack plugin
+    - slack:795.v4b_9705b_e6d47
     # - aws-secrets-manager-credentials-provider:2.87.v49cc86c50c3b_ - dependencies issues for this plugin
 
   # -------------------------
@@ -120,15 +123,34 @@ controller:
           # Jenkins uses Kubernetes to dynamically create build agents (pods).
           clouds:
             - kubernetes:
-                name: "kubernetes"
+                name: "k8s-eks-cloud"
                 # RECOMMENDED: Enables single-port communication over HTTP
                 webSocket: true
                 skipTlsVerify: true
+
+                jenkinsUrl: "http://jenkins.jenkins.svc.cluster.local:8080"
+
+                # This tells the agent to "dial" port 8080 instead of searching for port 50000
+                # Leave empty for WebSocket
+                jenkinsTunnel: ""
 
                 # Limits the number of concurrent agent pods Jenkins can create.
                 # Prevents cluster overload and controls cost (for this demo).
                 containerCapStr: "5"
                 namespace: "jenkins-agents"  # build agents will run in this namespace
+
+        # # -------------------------
+        # # CREDENTIALS
+        # # -------------------------
+        # credentials:
+        #   system:
+        #     domainCredentials:
+        #       - credentials:
+        #           - string:
+        #               scope: GLOBAL
+        #               id: slack-webhook-url
+        #               secret: '${SLACK_BOT_TOKEN}'       # (ToDo -injected from k8s secret)
+        #               description: "Slack bot token"
 
         # -------------------------
         # GLOBAL CONFIGURATION
@@ -137,6 +159,15 @@ controller:
           location:
             # Admin contact (appears in UI/system emails)
             adminAddress: "devops-demo@example.com"
+
+          # # -------------------------
+          # # Slack   
+          # # -------------------------
+          # slackNotifier:
+          #   teamDomain: "devops-portfolio"
+          #   tokenCredentialId: slack-webhook-url
+          #   botUser: true
+          #   room: "#ci-cd"
 
           # -------------------------
           # Shared Jenkins Library
